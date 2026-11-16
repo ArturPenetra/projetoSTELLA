@@ -1,0 +1,8 @@
+ESPECIFICAÇÕES/
+node_modules/
+dist/
+out/
+release/
+.env
+*.log
+.claude/
