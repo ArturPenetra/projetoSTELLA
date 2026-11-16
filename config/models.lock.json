@@ -1,7 +1,15 @@
 {
   "$comment": "Modelos do Ollama usados pela Stella. 'digest' é o hash do manifesto conferido depois do download. Atualize com: npm run models:pull -- --update-lock",
   "models": [
-    { "name": "qwen3.5:2b", "purpose": "chat", "digest": null },
-    { "name": "bge-m3", "purpose": "embeddings", "digest": null }
+    {
+      "name": "qwen3.5:2b",
+      "purpose": "chat",
+      "digest": "0689d44085e06d165161a8a9a1731344278cfb5aade63a3c3dbdb48ab54b130a"
+    },
+    {
+      "name": "bge-m3",
+      "purpose": "embeddings",
+      "digest": "7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab"
+    }
   ]
 }
