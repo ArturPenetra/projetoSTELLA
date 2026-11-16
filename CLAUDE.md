@@ -42,5 +42,7 @@ npm run check          # tudo acima
 
 ## Ambiente
 
-- Windows 10/11 x64, Node ≥ 22.12 (em uso: 24 LTS), Electron 45, Ollama 0.40.
-- Máquina de referência: GTX 1060 6 GB, 16 GB de RAM. Modelo padrão `qwen3.5:2b`.
+- Windows 10/11 x64, Node ≥ 22.12 (em uso: 26 LTS), Electron 45, Ollama 0.40.
+- Máquina de referência: GTX 1060 6 GB, 16 GB de RAM. Modelo padrão `qwen3.5:2b` (carregar a frio leva até ~1 min; depois, primeiro token em ~0,1 s).
+- **O disco C: desta máquina está quase cheio: tudo é instalado no D:.** Ferramentas em `D:\Ferramentas` (`nodejs`, `Ollama`), modelos em `D:\Ferramentas\OllamaModels` (variável `OLLAMA_MODELS`), caches em `D:\Ferramentas\cache` (npm `cache` e `electron_config_cache`). Só use o C: se for indispensável.
+- `.npmrc` tem `ignore-scripts=true`: nenhuma dependência roda script na instalação (o `better-sqlite3` já vem com binário pronto).

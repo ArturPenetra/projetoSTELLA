@@ -4,7 +4,7 @@
 
 A Stella é uma companheira de IA para desktop que roda **100% no seu computador**. Ela aparece como um avatar animado na tela, conversa por texto e voz e lembra do que você contou. São 12 personas inspiradas nos signos do Zodíaco, e 4 delas estão ativas no lançamento: Leo, Corni, Aqua e Pixi. Nada sai da sua máquina: sem nuvem, sem chave de API, sem telemetria.
 
-> Em desenvolvimento. Fase atual: **1 — Fundação**.
+> Em desenvolvimento. Fase atual: **2 — Chat com LLM local** (concluída).
 
 ## Requisitos
 
@@ -17,6 +17,12 @@ A Stella é uma companheira de IA para desktop que roda **100% no seu computador
 
 ```bash
 npm install
+```
+
+Baixe os modelos (uma vez só, cerca de 4 GB; o Ollama precisa estar aberto):
+
+```bash
+npm run models:pull
 ```
 
 ```bash
