@@ -1,0 +1,19 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, 'Segoe UI', sans-serif;
+}
+body {
+  margin: 0;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background: #1b3f80;
+  color: #ffffff;
+}
+main {
+  text-align: center;
+}
+#versions {
+  opacity: 0.7;
+  font-size: 0.8rem;
+}

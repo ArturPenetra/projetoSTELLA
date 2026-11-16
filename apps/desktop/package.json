@@ -1,0 +1,25 @@
+{
+  "name": "@stella/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "App de desktop da Stella (Electron)",
+  "type": "module",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "check:native": "node scripts/check-native.mjs"
+  },
+  "dependencies": {
+    "@stella/core": "0.1.0",
+    "better-sqlite3": "13.2.0",
+    "sqlite-vec": "0.1.9"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "electron": "45.3.3",
+    "electron-vite": "6.0.0",
+    "vite": "8.3.8"
+  }
+}
