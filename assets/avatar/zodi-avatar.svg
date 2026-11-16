@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 400 520" data-element="ar" role="img" aria-label="Avatar ZODI">
+  <!--
+    ZODI: modelo único de avatar.
+    Troque só o atributo data-element: fogo | terra | ar | agua.
+    Todas as cores do elemento vêm das variáveis abaixo; a forma nunca muda.
+    Boca: a classe "falando" no <svg> mostra a boca aberta (para sincronia com o áudio).
+  -->
+  <style>
+    svg { --primaria:#2F7BEA; --secundaria:#B8C4D6; --profunda:#1B3F80; --brilho:#A9D1FF; }
+    svg[data-element="fogo"]  { --primaria:#E8892B; --secundaria:#F4C04E; --profunda:#9C3D12; --brilho:#FFD58A; }
+    svg[data-element="terra"] { --primaria:#5E7A3E; --secundaria:#B07D4F; --profunda:#3B4A27; --brilho:#D3E0A8; }
+    svg[data-element="ar"]    { --primaria:#2F7BEA; --secundaria:#B8C4D6; --profunda:#1B3F80; --brilho:#A9D1FF; }
+    svg[data-element="agua"]  { --primaria:#9A7FD1; --secundaria:#4FC3B8; --profunda:#5B4590; --brilho:#C7F0EA; }
+    .primaria   { fill: var(--primaria); }
+    .secundaria { fill: var(--secundaria); }
+    .profunda   { fill: var(--profunda); }
+    .brilho     { fill: var(--brilho); }
+    .pele       { fill: #F6D7C3; }
+    .contorno   { fill: none; stroke: #2B2233; stroke-width: 4; stroke-linecap: round; }
+    .boca-aberta { display: none; }
+    svg.falando .boca-aberta  { display: inline; }
+    svg.falando .boca-fechada { display: none; }
+  </style>
+  <defs>
+    <polygon id="estrela" points="0,-16 4.11,-5.66 15.22,-4.94 6.66,2.16 9.4,12.94 0,7 -9.4,12.94 -6.66,2.16 -15.22,-4.94 -4.11,-5.66"/>
+  </defs>
+
+  <!-- aura -->
+  <circle class="brilho" cx="200" cy="235" r="180" opacity="0.28"/>
+
+  <!-- brilhos ao redor -->
+  <g class="secundaria" opacity="0.85">
+    <use xlink:href="#estrela" href="#estrela" transform="translate(62 118) scale(0.6)"/>
+    <use xlink:href="#estrela" href="#estrela" transform="translate(344 92) scale(0.5)"/>
+    <use xlink:href="#estrela" href="#estrela" transform="translate(348 300) scale(0.45)"/>
+    <use xlink:href="#estrela" href="#estrela" transform="translate(52 332) scale(0.4)"/>
+  </g>
+
+  <!-- cabelo de trás -->
+  <path class="profunda" d="M70 200 Q70 68 200 64 Q330 68 330 200 L336 332 Q302 348 276 322 L270 250 L130 250 L124 322 Q98 348 64 332 Z"/>
+
+  <!-- corpo: moletom -->
+  <path class="primaria" d="M92 520 Q92 338 200 300 Q308 338 308 520 Z"/>
+  <path class="profunda" opacity="0.35" d="M148 472 Q200 456 252 472 L252 520 L148 520 Z"/>
+
+  <!-- pescoço e gola -->
+  <rect class="pele" x="184" y="262" width="32" height="48" rx="10"/>
+  <path class="profunda" d="M138 316 Q200 364 262 316 Q246 298 200 296 Q154 298 138 316 Z"/>
+
+  <!-- cordões do capuz -->
+  <g stroke="var(--secundaria)" stroke-width="4" stroke-linecap="round">
+    <line x1="180" y1="334" x2="175" y2="392"/>
+    <line x1="220" y1="334" x2="225" y2="392"/>
+  </g>
+  <circle class="secundaria" cx="175" cy="396" r="5"/>
+  <circle class="secundaria" cx="225" cy="396" r="5"/>
+
+  <!-- pingente de estrela -->
+  <circle class="brilho" cx="200" cy="432" r="26" opacity="0.6"/>
+  <use class="secundaria" xlink:href="#estrela" href="#estrela" transform="translate(200 434) scale(1.3)" stroke="var(--profunda)" stroke-width="1.5"/>
+
+  <!-- rosto -->
+  <ellipse class="pele" cx="200" cy="190" rx="98" ry="92"/>
+
+  <!-- franja e mechas -->
+  <path class="primaria" d="M100 176 Q104 84 200 80 Q296 84 300 176 Q280 140 255 150 Q240 114 215 140 Q200 108 180 140 Q160 114 145 150 Q120 140 100 176 Z"/>
+  <path class="primaria" d="M101 168 Q90 230 108 268 Q120 230 119 188 Z"/>
+  <path class="primaria" d="M299 168 Q310 230 292 268 Q280 230 281 188 Z"/>
+  <path d="M150 104 Q200 88 246 104" fill="none" stroke="var(--brilho)" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- presilha de estrela -->
+  <use class="secundaria" xlink:href="#estrela" href="#estrela" transform="translate(264 118)" stroke="var(--profunda)" stroke-width="1.5"/>
+
+  <!-- sobrancelhas -->
+  <path d="M144 166 Q160 158 176 163" fill="none" stroke="var(--profunda)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M256 166 Q240 158 224 163" fill="none" stroke="var(--profunda)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- olhos -->
+  <g id="olhos">
+    <ellipse cx="162" cy="202" rx="20" ry="24" fill="#FFFFFF"/>
+    <ellipse class="profunda" cx="162" cy="204" rx="15" ry="19"/>
+    <ellipse cx="162" cy="206" rx="7" ry="9" fill="#1D1A2B"/>
+    <circle cx="168" cy="196" r="5" fill="#FFFFFF"/>
+    <circle cx="157" cy="212" r="2.5" fill="#FFFFFF"/>
+    <path class="contorno" d="M140 192 Q162 170 184 192"/>
+
+    <ellipse cx="238" cy="202" rx="20" ry="24" fill="#FFFFFF"/>
+    <ellipse class="profunda" cx="238" cy="204" rx="15" ry="19"/>
+    <ellipse cx="238" cy="206" rx="7" ry="9" fill="#1D1A2B"/>
+    <circle cx="244" cy="196" r="5" fill="#FFFFFF"/>
+    <circle cx="233" cy="212" r="2.5" fill="#FFFFFF"/>
+    <path class="contorno" d="M216 192 Q238 170 260 192"/>
+  </g>
+
+  <!-- bochechas -->
+  <ellipse cx="138" cy="234" rx="14" ry="7" fill="#F59AA8" opacity="0.55"/>
+  <ellipse cx="262" cy="234" rx="14" ry="7" fill="#F59AA8" opacity="0.55"/>
+
+  <!-- boca -->
+  <path class="boca-fechada" d="M188 246 Q200 256 212 246" fill="none" stroke="#7A3B44" stroke-width="3.5" stroke-linecap="round"/>
+  <ellipse class="boca-aberta" cx="200" cy="250" rx="9" ry="8" fill="#7A3B44"/>
+</svg>
