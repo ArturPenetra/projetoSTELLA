@@ -171,10 +171,11 @@ test('trocar de persona no meio da conversa: a nova retoma o assunto e vê a ant
   await chat.screenshot({ path: 'test-results/personas-troca.png' });
 
   const handoff = fake.requests.at(-1) as FakeChatRequest;
-  expect(handoff.messages[0]?.content).toContain('Você é Corni, uma das personas');
+  const system = handoff.messages[0]?.content ?? '';
+  expect(system).toContain('Você é Corni, uma das personas');
+  // A conversa com a Aqua chega como transcrição, não como fala de assistente.
+  expect(system).toContain('Usuário: Quero organizar minha semana\nAqua: Bora organizar!');
   expect(handoff.messages.slice(1)).toEqual([
-    { role: 'user', content: 'Quero organizar minha semana' },
-    { role: 'assistant', content: '[Aqua] Bora organizar!' },
     { role: 'user', content: expect.stringContaining('no lugar da Aqua') },
   ]);
 
@@ -217,4 +218,45 @@ test('um fato contado ao Leo é lembrado pela Pixi na sessão seguinte', async (
   expect(system).toContain('Você é Pixi, uma das personas');
   expect(system).toContain('- O usuário se chama Artur. (');
   expect(system).toContain(', contou ao Leo)');
+});
+
+test('trocas rápidas seguidas: fica só o cumprimento da última persona', async () => {
+  fake = await startFakeOllama({ reply: ['Vamos', ' nessa', ' juntos!'], delayMs: 120 });
+  stella = await launch(fake.url);
+  const chat = await openChatByAvatar(stella);
+  await chat.locator('#input').fill('Quero correr 5 km em 2 meses');
+  await chat.keyboard.press('Enter');
+  await expect(chat.locator('.msg.assistant[data-speaker="Aqua"]')).toHaveText(
+    'Vamos nessa juntos!',
+  );
+
+  // Três trocas sem esperar a anterior terminar.
+  for (const id of ['corni', 'leo', 'pixi']) {
+    await chat.locator('#personas-open').click();
+    await chat.locator(`.persona-card[data-id="${id}"]`).click();
+  }
+  await expect(chat.locator('#persona-name')).toHaveText('Pixi');
+  await expect(chat.locator('.msg.assistant[data-speaker="Pixi"]')).toHaveText(
+    'Vamos nessa juntos!',
+  );
+  await expect(chat.locator('#send')).toHaveText('Enviar');
+
+  // Na tela: a resposta da Aqua e um único cumprimento, o da Pixi.
+  await expect(chat.locator('.msg.assistant')).toHaveCount(2);
+  await expect(
+    chat.locator('.msg.assistant[data-speaker="Corni"], .msg.assistant[data-speaker="Leo"]'),
+  ).toHaveCount(0);
+  await chat.screenshot({ path: 'test-results/personas-trocas-rapidas.png' });
+
+  // No modelo: a Pixi vê a conversa real, sem fila de cumprimentos, e o assunto citado.
+  const last = fake.requests.at(-1);
+  const system = last?.messages[0]?.content ?? '';
+  expect(system).toContain('Você é Pixi');
+  // Só a conversa real (nenhum cumprimento da Corni ou do Leo).
+  expect(system.slice(system.indexOf('Conversa até agora')).split('\n').slice(1)).toEqual([
+    'Usuário: Quero correr 5 km em 2 meses',
+    'Aqua: Vamos nessa juntos!',
+  ]);
+  expect(last?.messages).toHaveLength(2);
+  expect(last?.messages[1]?.content).toContain('"Quero correr 5 km em 2 meses"');
 });

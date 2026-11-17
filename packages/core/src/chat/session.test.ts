@@ -152,10 +152,19 @@ describe('ChatSession', () => {
       session.setSpeaker(corni);
       await drain(session.send('E agora?'));
 
+      // A conversa com o Leo vira transcrição no prompt de sistema: a Corni não vê falas de
+      // assistente de outra persona (o modelo pequeno passava a repeti-las).
       expect(llm.calls[1]).toEqual([
-        { role: 'system', content: 'Você é a Corni.' },
-        { role: 'user', content: 'Quero treinar' },
-        { role: 'assistant', content: '[Leo] Bora treinar!' },
+        {
+          role: 'system',
+          content: [
+            'Você é a Corni.',
+            '',
+            'Conversa até agora, antes de você responder (falas com o nome de outra persona são dela, não suas; não as repita):',
+            'Usuário: Quero treinar',
+            'Leo: Bora treinar!',
+          ].join('\n'),
+        },
         { role: 'user', content: 'E agora?' },
       ]);
     });
@@ -247,5 +256,41 @@ describe('SpeakerTagFilter', () => {
     const session = new ChatSession(llm);
     expect(await drain(session.send('Oi'))).toBe('Bora!');
     expect(session.messages.at(-1)?.content).toBe('Bora!');
+  });
+});
+
+describe('estabilidade nas trocas de persona', () => {
+  const names = ['Leo', 'Aqua'];
+
+  it('o filtro também tira "Nome:" de personas conhecidas', () => {
+    const run = (pieces: string[]) => {
+      const f = new SpeakerTagFilter(names);
+      return pieces.map((p) => f.push(p)).join('') + f.flush();
+    };
+    expect(run(['Aqua: Oi Artur!'])).toBe('Oi Artur!');
+    expect(run(['A', 'qu', 'a', ':', ' Oi'])).toBe('Oi');
+    expect(run(['Aquário é um signo'])).toBe('Aquário é um signo');
+    expect(run(['Leonardo: oi'])).toBe('Leonardo: oi');
+    expect(run(['Ana: oi'])).toBe('Ana: oi');
+  });
+
+  it('dropPendingHandoffs tira só as falas por conta própria sem resposta', async () => {
+    const llm = new ScriptedLlm([['Resposta'], ['Troca 1'], ['Troca 2']]);
+    const session = new ChatSession(llm);
+    session.say('Cumprimento');
+    expect(session.hasUserMessages).toBe(false);
+    expect(session.dropPendingHandoffs()).toBe(1);
+    await drain(session.send('Oi'));
+    await drain(session.send('(troca)', { hidden: true }));
+    await drain(session.send('(troca)', { hidden: true }));
+    expect(session.messages.map((m) => [m.content, m.handoff ?? false])).toEqual([
+      ['Oi', false],
+      ['Resposta', false],
+      ['Troca 1', true],
+      ['Troca 2', true],
+    ]);
+    expect(session.dropPendingHandoffs()).toBe(2);
+    expect(session.messages.map((m) => m.content)).toEqual(['Oi', 'Resposta']);
+    expect(session.recentUserMessages()).toEqual(['Oi']);
   });
 });

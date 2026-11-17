@@ -80,6 +80,11 @@ function labelBubble(bubble: HTMLElement, speaker: SpeakerView): void {
 }
 
 stella.chat.onEvent((event: ChatEvent) => {
+  if (event.type === 'retract') {
+    // Trocas seguidas: o cumprimento que ninguém respondeu é substituído pelo da nova persona.
+    messages.querySelector(`[data-request-id="${CSS.escape(event.requestId)}"]`)?.remove();
+    return;
+  }
   if (event.type === 'start') {
     // Resposta ao usuário: usa o balão que já está esperando. Fala por conta própria da
     // persona (cumprimento, troca): abre um balão novo.
@@ -90,6 +95,8 @@ stella.chat.onEvent((event: ChatEvent) => {
       setBusy(true);
     }
     currentRequest = event.requestId;
+    currentBubble.dataset['requestId'] = event.requestId;
+    currentBubble.dataset['kind'] = event.kind;
     labelBubble(currentBubble, event.speaker);
     return;
   }
@@ -103,7 +110,13 @@ stella.chat.onEvent((event: ChatEvent) => {
       finish();
       break;
     case 'error':
-      if (!currentBubble.textContent) currentBubble.remove();
+      // Fala por conta própria interrompida (outra troca de persona): não deixa resto na tela.
+      if (
+        !currentBubble.textContent ||
+        (event.code === 'aborted' && currentBubble.dataset['kind'] === 'handoff')
+      ) {
+        currentBubble.remove();
+      }
       if (event.code !== 'aborted') addBubble('error', event.message);
       finish();
       if (event.code === 'unavailable' || event.code === 'model_missing') void refreshStatus();

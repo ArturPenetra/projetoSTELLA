@@ -83,6 +83,14 @@ export async function setupPersonas(stella: StellaApi): Promise<void> {
   const panel = $<HTMLElement>('persona-panel');
   const onboarding = $<HTMLElement>('onboarding');
   const openButton = $<HTMLButtonElement>('personas-open');
+  // O botão responde desde o primeiro instante: um clique antes de o estado chegar abre o
+  // painel assim que ele chegar (antes, o clique se perdia com a máquina ocupada).
+  let ready = false;
+  let openWhenReady = false;
+  openButton.addEventListener('click', () => {
+    if (ready) openPanel();
+    else openWhenReady = true;
+  });
   let state: PersonaState = await stella.personas.state();
 
   const palettes = new Map(state.personas.map((p) => [p.element, p.palette]));
@@ -177,7 +185,8 @@ export async function setupPersonas(stella: StellaApi): Promise<void> {
     openButton.setAttribute('aria-expanded', 'false');
   }
 
-  openButton.addEventListener('click', openPanel);
+  ready = true;
+  if (openWhenReady) openPanel();
   panel.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closePanel();
   });

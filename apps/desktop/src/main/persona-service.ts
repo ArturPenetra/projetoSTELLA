@@ -147,7 +147,7 @@ export class PersonaService {
     const previous = this.persona;
     await this.apply(next);
     await this.chat()?.switchTo(this.speaker(next), {
-      handoff: handoffInstruction(next, previous),
+      handoff: (recent) => handoffInstruction(next, previous, recent),
       greeting: next.greeting,
     });
   }
@@ -201,9 +201,9 @@ export class PersonaService {
     const chat = this.chat();
     if (!chat || unchanged) return;
     const greeting = knowsName(this.memory) ? persona.greeting : `${persona.greeting} ${ASK_NAME}`;
-    if (chat.hasHistory) {
+    if (chat.hasConversation) {
       await chat.switchTo(this.speaker(persona), {
-        handoff: handoffInstruction(persona, undefined),
+        handoff: (recent) => handoffInstruction(persona, undefined, recent),
       });
     } else {
       await chat.switchTo(this.speaker(persona), { greeting });

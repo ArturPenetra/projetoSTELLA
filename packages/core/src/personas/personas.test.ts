@@ -251,9 +251,13 @@ describe('prompt das personas', () => {
   it('instrução de troca cita a persona anterior com o artigo certo', () => {
     expect(withArticle(leo)).toBe('o Leo');
     expect(withArticle(pixi)).toBe('a Pixi');
-    const text = handoffInstruction(pixi, leo);
+    const text = handoffInstruction(pixi, leo, ['Quero correr 5 km', '  Hoje corro   1 km ']);
     expect(text).toContain('no lugar do Leo');
     expect(text).toContain('cite o Leo pelo nome');
     expect(text).toContain('Não repita perguntas que já foram respondidas');
+    // Âncoras contra a mudança de contexto em trocas seguidas: quem ela é e o assunto.
+    expect(text).toContain('Você é a Pixi e mais ninguém');
+    expect(text).toContain('em ordem: "Quero correr 5 km" "Hoje corro 1 km"');
+    expect(handoffInstruction(pixi, undefined)).toContain('Retome o assunto em andamento.');
   });
 });

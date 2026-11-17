@@ -46,3 +46,22 @@ As respostas variam de rodada para rodada. Ainda aparece, de vez em quando:
 - repetir o exemplo de fala do `prompt.md` palavra por palavra.
 
 Um modelo maior (qwen3.5:4b, com GPU de 6 GB ou mais) deve reduzir esses casos. Vale rodar a revisão de novo ao trocar o modelo padrão.
+
+## Trocas seguidas de persona (16/11/2026)
+
+Problema relatado: trocar de persona várias vezes seguidas mudava o contexto. Reproduzido com `tests/review/switch.review.ts` (conversa sobre correr 5 km, depois 6 trocas sem o usuário falar):
+
+- a última persona dizia "não sei qual seu objetivo";
+- a Pixi falava "Como Aqua, sou...";
+- uma persona assumia repetindo, palavra por palavra, uma fala antiga do Leo.
+
+Causas e correções:
+
+| Causa                                                                                        | Correção                                                                                             |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Cada troca acrescentava um cumprimento; o modelo via uma fila de personas falando sozinhas   | Cumprimentos que o usuário não respondeu são substituídos na troca seguinte (no histórico e na tela) |
+| Falas de outras personas iam como mensagens de assistente, e o 2B continuava a "transcrição" | Elas vão como transcrição no prompt de sistema; só as falas da persona atual vão como mensagens      |
+| A instrução de troca não dizia qual era o assunto                                            | A instrução cita as últimas mensagens do usuário e reforça "você é X e mais ninguém"                 |
+| O modelo começava com "Aqua:"                                                                | O filtro tira "Nome:" e "[Nome]" do começo da resposta                                               |
+
+Depois: em 5 rodadas, todas as personas mantiveram o assunto (5 km, 1 km hoje), nenhuma perguntou o nome de novo e nenhuma repetiu fala de outra. Numa rodada ainda apareceu "Como Aquia" (deslize do 2B).

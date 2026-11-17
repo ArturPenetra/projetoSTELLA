@@ -35,6 +35,7 @@ export const IPC = {
   companionDragMove: 'companion:drag-move',
   companionDragEnd: 'companion:drag-end',
   companionOpenChat: 'companion:open-chat',
+  companionBubbleClick: 'companion:bubble-click',
   companionMenu: 'companion:menu',
 } as const;
 
@@ -48,8 +49,13 @@ export interface SpeakerView {
 }
 
 export type ChatEvent =
-  /** Começo de uma resposta: também chega quando a persona fala por conta própria. */
-  | { requestId: string; type: 'start'; speaker: SpeakerView }
+  /**
+   * Começo de uma resposta. `handoff`: a persona fala por conta própria (cumprimento ou troca);
+   * se for cancelada ou substituída por outra troca, sai da tela.
+   */
+  | { requestId: string; type: 'start'; kind: 'reply' | 'handoff'; speaker: SpeakerView }
+  /** Uma fala por conta própria foi substituída (trocas seguidas): some da tela. */
+  | { requestId: string; type: 'retract' }
   | { requestId: string; type: 'token'; text: string }
   | { requestId: string; type: 'done'; outputTokens?: number; totalMs?: number }
   | { requestId: string; type: 'error'; code: LlmErrorCode | 'internal'; message: string };
@@ -163,5 +169,7 @@ export interface CompanionApi {
   dragMove(dx: number, dy: number): void;
   dragEnd(): void;
   openChat(): void;
+  /** Clique no balão: próxima página da fala ou, na última, abre o chat. */
+  bubbleClick(): void;
   openMenu(): void;
 }

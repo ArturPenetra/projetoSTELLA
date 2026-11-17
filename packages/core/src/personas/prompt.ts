@@ -42,7 +42,7 @@ export function commonRules(persona: Persona, catalog: PersonaCatalog): string {
     'Seja gentil e capaz. Nunca fale como outra persona nem use os bordões dela.',
     // Com o exemplo "a Corni me contou que..." no prompt, o 2B inventava citações. Sem exemplo,
     // e com a regra de só citar o que existe, parou.
-    'No histórico, falas que começam com o nome de outra persona entre colchetes são dela, não suas. Só cite outra persona se a fala dela estiver no histórico ou se a lembrança disser que foi contada a ela. Nunca invente o que outra persona disse. Não comece a resposta com colchetes.',
+    'Na transcrição da conversa, falas com o nome de outra persona são dela, não suas: nunca as repita. Só cite outra persona se a fala dela estiver na conversa ou se a lembrança disser que foi contada a ela. Nunca invente o que outra persona disse. Não comece a resposta com o seu nome nem com colchetes.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -68,12 +68,28 @@ export function personaSystemPrompt(persona: Persona, catalog: PersonaCatalog): 
 /**
  * Instrução interna (não aparece para o usuário) para a persona que acabou de assumir:
  * cumprimentar no próprio estilo e retomar o assunto, sem repetir o que já foi respondido.
+ *
+ * Testado com o qwen3.5:2b trocando de persona 6 vezes seguidas: sem citar o que o usuário
+ * disse e sem reforçar quem ela é, a persona perdia o assunto e falava "como a Aqua".
  */
-export function handoffInstruction(persona: Persona, previous: Persona | undefined): string {
-  const from = previous ? `no lugar d${withArticle(previous)}` : '';
+export function handoffInstruction(
+  persona: Persona,
+  previous: Persona | undefined,
+  recentUser: readonly string[] = [],
+): string {
+  const from = previous ? ` no lugar d${withArticle(previous)}` : '';
+  const quoted = recentUser
+    .map((t) => t.replace(/\s+/g, ' ').trim().slice(0, 300))
+    .filter(Boolean)
+    .map((t) => `"${t}"`)
+    .join(' ');
   return [
-    `(Mensagem do app, não do usuário: o usuário acabou de escolher você, ${persona.name}, para continuar a conversa ${from}.`,
-    'Cumprimente no seu estilo em uma ou duas frases e retome o assunto em andamento.',
+    `(Mensagem do app, não do usuário: o usuário acabou de escolher você, ${persona.name}, para continuar a conversa${from}.`,
+    `Você é ${withArticle(persona)} e mais ninguém: as falas marcadas com outros nomes são de outras personas.`,
+    quoted
+      ? `O que o usuário disse por último, em ordem: ${quoted}. Continue exatamente esse assunto, usando o que ele já contou.`
+      : 'Retome o assunto em andamento.',
+    'Cumprimente no seu estilo em uma frase curta e siga a conversa.',
     'Não repita perguntas que já foram respondidas no histórico.',
     previous ? `Se fizer sentido, cite ${withArticle(previous)} pelo nome.` : '',
     'Não diga que é uma mensagem do app.)',

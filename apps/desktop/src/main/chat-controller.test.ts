@@ -17,6 +17,13 @@ const pixi: ChatSpeaker = {
   systemPrompt: 'Você é a Pixi.',
 };
 
+/** Linhas da transcrição que vão no prompt de sistema quando outra persona já falou. */
+function transcript(request: { messages: { content: string }[] } | undefined): string[] {
+  const system = request?.messages[0]?.content ?? '';
+  const start = system.indexOf('Conversa até agora');
+  return start < 0 ? [] : system.slice(start).split('\n').slice(1);
+}
+
 async function setup(options: Parameters<typeof startFakeOllama>[0] = {}) {
   const fake = await startFakeOllama(options);
   closers.push(fake.close);
@@ -91,7 +98,9 @@ describe('ChatController', () => {
       expect(events[0]).toMatchObject({ speaker: { id: 'pixi' } });
       expect(events[1]).toMatchObject({ text: 'Oi... como você está?' });
       expect(fake.requests).toHaveLength(0);
-      expect(controller.hasHistory).toBe(true);
+      expect(events[0]).toMatchObject({ kind: 'handoff' });
+      // Cumprimento não é conversa: o usuário ainda não disse nada.
+      expect(controller.hasConversation).toBe(false);
     });
 
     it('com conversa, a nova persona recebe a instrução oculta e o histórico rotulado', async () => {
@@ -106,12 +115,9 @@ describe('ChatController', () => {
       expect(events.at(-1)).toMatchObject({ type: 'done' });
 
       const request = fake.requests.at(-1);
-      expect(request?.messages).toEqual([
-        { role: 'system', content: 'Você é a Pixi.' },
-        { role: 'user', content: 'Quero treinar mais' },
-        { role: 'assistant', content: '[Leo] Bora!' },
-        { role: 'user', content: '(troca de persona)' },
-      ]);
+      expect(request?.messages[0]?.content.startsWith('Você é a Pixi.')).toBe(true);
+      expect(transcript(request)).toEqual(['Usuário: Quero treinar mais', 'Leo: Bora!']);
+      expect(request?.messages.slice(1)).toEqual([{ role: 'user', content: '(troca de persona)' }]);
       expect(controller.currentSpeaker.id).toBe('pixi');
     });
 
@@ -128,7 +134,89 @@ describe('ChatController', () => {
       await controller.switchTo(pixi);
       controller.reset();
       expect(controller.currentSpeaker.id).toBe('pixi');
-      expect(controller.hasHistory).toBe(false);
+      expect(controller.hasConversation).toBe(false);
+    });
+
+    const corni: ChatSpeaker = {
+      id: 'corni',
+      name: 'Corni',
+      element: 'terra',
+      systemPrompt: 'Você é a Corni.',
+    };
+    const aqua: ChatSpeaker = {
+      id: 'aqua',
+      name: 'Aqua',
+      element: 'ar',
+      systemPrompt: 'Você é a Aqua.',
+    };
+
+    it('trocas seguidas: só o cumprimento da última persona fica, no histórico e na tela', async () => {
+      const { controller, events, fake } = await setup({ reply: ['Fala!'] });
+      controller.send('Quero correr 5 km');
+      await controller.idle();
+      const recents: string[][] = [];
+      const handoff = (r: string[]) => {
+        recents.push(r);
+        return '(troca)';
+      };
+
+      for (const p of [pixi, corni, aqua]) {
+        await controller.switchTo(p, { handoff });
+        await controller.idle();
+      }
+
+      // Cada troca recebeu o que o usuário disse por último.
+      expect(recents).toEqual([
+        ['Quero correr 5 km'],
+        ['Quero correr 5 km'],
+        ['Quero correr 5 km'],
+      ]);
+      // As duas primeiras falas por conta própria foram retiradas da tela.
+      const starts = events.filter((e) => e.type === 'start' && e.kind === 'handoff');
+      const retracted = events.filter((e) => e.type === 'retract').map((e) => e.requestId);
+      expect(retracted).toEqual(starts.slice(0, 2).map((e) => e.requestId));
+      // A Aqua vê a conversa real e nenhuma fila de cumprimentos.
+      expect(transcript(fake.requests.at(-1))).toEqual([
+        'Usuário: Quero correr 5 km',
+        'Leo: Fala!',
+      ]);
+      expect(fake.requests.at(-1)?.messages.slice(1)).toEqual([
+        { role: 'user', content: '(troca)' },
+      ]);
+
+      // Depois que o usuário responde, o cumprimento passa a fazer parte da conversa.
+      controller.send('Bora');
+      await controller.idle();
+      await controller.switchTo(pixi, { handoff });
+      await controller.idle();
+      expect(transcript(fake.requests.at(-1))).toEqual([
+        'Usuário: Quero correr 5 km',
+        'Leo: Fala!',
+        'Aqua: Fala!',
+        'Usuário: Bora',
+        'Aqua: Fala!',
+      ]);
+      expect(recents.at(-1)).toEqual(['Quero correr 5 km', 'Bora']);
+    });
+
+    it('troca no meio de outra troca cancela a primeira, sem deixar resto', async () => {
+      const { controller, events } = await setup({ reply: ['a', 'b', 'c', 'd'], delayMs: 40 });
+      controller.send('oi');
+      await controller.idle();
+      void controller.switchTo(pixi, { handoff: '(troca)' });
+      await new Promise((r) => setTimeout(r, 60));
+      await controller.switchTo(corni, { handoff: '(troca)' });
+      await controller.idle();
+      const pixiStart = events.find((e) => e.type === 'start' && e.speaker.id === 'pixi');
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          requestId: pixiStart?.requestId,
+          type: 'error',
+          code: 'aborted',
+        }),
+      );
+      expect(events).toContainEqual({ requestId: pixiStart?.requestId, type: 'retract' });
+      expect(events.at(-1)).toMatchObject({ type: 'done' });
     });
   });
 });

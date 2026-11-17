@@ -20,8 +20,11 @@ export interface ChatControllerOptions {
 }
 
 export interface SwitchOptions {
-  /** Instrução oculta para a nova persona retomar a conversa (usada se já houver histórico). */
-  handoff?: string;
+  /**
+   * Instrução oculta para a nova persona retomar a conversa (usada se o usuário já disse
+   * algo). Como função, recebe as últimas mensagens do usuário para citar o assunto.
+   */
+  handoff?: string | ((recentUser: string[]) => string);
   /** O que a persona diz quando ainda não há conversa. */
   greeting?: string;
 }
@@ -35,6 +38,8 @@ export class ChatController {
   private speaker: ChatSpeaker;
   private readonly memory: Memory | undefined;
   private current: { id: string; abort: AbortController } | undefined;
+  /** Falas por conta própria ainda sem resposta do usuário (saem da tela numa nova troca). */
+  private pendingHandoffs: string[] = [];
 
   constructor(
     private readonly llm: LlmClient,
@@ -57,9 +62,9 @@ export class ChatController {
     return this.speaker;
   }
 
-  /** Se a conversa atual já tem alguma fala. */
-  get hasHistory(): boolean {
-    return this.session.messages.length > 0;
+  /** Se o usuário já disse alguma coisa nesta conversa. */
+  get hasConversation(): boolean {
+    return this.session.hasUserMessages;
   }
 
   private speakerView(): SpeakerView {
@@ -76,6 +81,8 @@ export class ChatController {
     if (this.current) {
       throw new Error('Espere a resposta atual terminar ou cancele-a.');
     }
+    // O usuário respondeu: os cumprimentos anteriores agora fazem parte da conversa.
+    this.pendingHandoffs = [];
     return { requestId: this.start(text, false) };
   }
 
@@ -83,7 +90,13 @@ export class ChatController {
     const requestId = randomUUID();
     const abort = new AbortController();
     this.current = { id: requestId, abort };
-    this.emit({ requestId, type: 'start', speaker: this.speakerView() });
+    if (hidden) this.pendingHandoffs.push(requestId);
+    this.emit({
+      requestId,
+      type: 'start',
+      kind: hidden ? 'handoff' : 'reply',
+      speaker: this.speakerView(),
+    });
     void this.run(requestId, text, hidden, abort.signal);
     return requestId;
   }
@@ -101,8 +114,18 @@ export class ChatController {
     this.speaker = speaker;
     this.session.setSpeaker(speaker);
 
-    if (this.hasHistory && options.handoff) {
-      this.start(options.handoff, true);
+    // Trocas seguidas: o cumprimento que o usuário ainda não respondeu sai do histórico e
+    // da tela. Assim o modelo nunca vê uma fila de personas falando sozinhas.
+    this.session.dropPendingHandoffs();
+    for (const requestId of this.pendingHandoffs.splice(0)) {
+      this.emit({ requestId, type: 'retract' });
+    }
+
+    if (this.hasConversation && options.handoff) {
+      const { handoff } = options;
+      const text =
+        typeof handoff === 'function' ? handoff(this.session.recentUserMessages()) : handoff;
+      this.start(text, true);
       return;
     }
     if (options.greeting) this.sayNow(options.greeting);
@@ -112,7 +135,8 @@ export class ChatController {
   sayNow(text: string): void {
     const requestId = randomUUID();
     this.session.say(text);
-    this.emit({ requestId, type: 'start', speaker: this.speakerView() });
+    this.pendingHandoffs.push(requestId);
+    this.emit({ requestId, type: 'start', kind: 'handoff', speaker: this.speakerView() });
     this.emit({ requestId, type: 'token', text });
     this.emit({ requestId, type: 'done' });
   }
@@ -123,6 +147,7 @@ export class ChatController {
 
   reset(): void {
     this.current?.abort.abort();
+    this.pendingHandoffs = [];
     this.session = this.newSession();
     this.memory?.newConversation();
   }
