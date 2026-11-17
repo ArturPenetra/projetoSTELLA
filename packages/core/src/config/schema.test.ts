@@ -8,6 +8,13 @@ describe('parseConfig', () => {
     expect(config.llm.model).toBe(DEFAULT_CHAT_MODEL);
     expect(config.llm.think).toBe(false);
     expect(config.ui.language).toBe('pt-BR');
+    expect(config.memory).toEqual({ enabled: true, embeddingModel: 'bge-m3', topK: 5 });
+  });
+
+  it('valida a configuração da memória', () => {
+    expect(parseConfig({ memory: { enabled: false } }).memory.enabled).toBe(false);
+    expect(() => parseConfig({ memory: { topK: 0 } })).toThrow(ConfigError);
+    expect(() => parseConfig({ memory: { embeddingModel: ' ' } })).toThrow(/memory.embeddingModel/);
   });
 
   it('aceita outro modelo e porta local', () => {

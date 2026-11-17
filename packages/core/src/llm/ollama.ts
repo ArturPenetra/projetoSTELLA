@@ -3,7 +3,16 @@ import { isLoopbackUrl } from '../network-policy.js';
 import type { LlmConfig } from '../config/schema.js';
 import { LlmError, isAbortError } from './errors.js';
 import { readNdjson } from './ndjson.js';
-import type { ChatChunk, ChatMessage, ChatOptions, LlmClient, LlmStatus } from './types.js';
+import type {
+  ChatChunk,
+  ChatMessage,
+  ChatOptions,
+  CompleteOptions,
+  Completer,
+  Embedder,
+  LlmClient,
+  LlmStatus,
+} from './types.js';
 
 const STATUS_TIMEOUT_MS = 3000;
 
@@ -14,6 +23,11 @@ const chatLineSchema = z.object({
   eval_count: z.number().optional(),
   total_duration: z.number().optional(),
 });
+
+const completeSchema = z.object({
+  message: z.object({ content: z.string() }),
+});
+const embedSchema = z.object({ embeddings: z.array(z.array(z.number())) });
 
 const versionSchema = z.object({ version: z.string() });
 const tagsSchema = z.object({
@@ -27,7 +41,7 @@ export type OllamaClientOptions = Pick<LlmConfig, 'baseUrl' | 'model'> &
   };
 
 /** Cliente do Ollama local (`/api/chat` com streaming). Só aceita endereços de loopback. */
-export class OllamaClient implements LlmClient {
+export class OllamaClient implements LlmClient, Completer, Embedder {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
 
@@ -126,6 +140,70 @@ export class OllamaClient implements LlmClient {
       throw LlmError.unavailable(this.baseUrl, err);
     }
     throw new LlmError('bad_response', 'A resposta do Ollama terminou antes do fim.');
+  }
+
+  /** Resposta inteira de uma vez, opcionalmente presa a um esquema JSON. */
+  async complete(messages: ChatMessage[], options: CompleteOptions = {}): Promise<string> {
+    const body = await this.postJson(
+      '/api/chat',
+      {
+        model: this.model,
+        messages,
+        stream: false,
+        think: false,
+        ...(options.format ? { format: options.format } : {}),
+        options: {
+          temperature: options.temperature ?? 0,
+          num_ctx: this.options.contextSize ?? 8192,
+        },
+      },
+      options.signal,
+    );
+    const parsed = completeSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new LlmError('bad_response', 'O Ollama mandou uma resposta em formato inesperado.');
+    }
+    return parsed.data.message.content;
+  }
+
+  /** Embeddings de vários textos numa chamada só (`/api/embed`). */
+  async embed(texts: string[], signal?: AbortSignal): Promise<Float32Array[]> {
+    if (texts.length === 0) return [];
+    // Mantém o modelo de embedding carregado por mais tempo: a frio ele demora segundos.
+    const body = await this.postJson(
+      '/api/embed',
+      { model: this.model, input: texts, keep_alive: '30m' },
+      signal,
+    );
+    const parsed = embedSchema.safeParse(body);
+    if (!parsed.success || parsed.data.embeddings.length !== texts.length) {
+      throw new LlmError('bad_response', 'O Ollama mandou embeddings em formato inesperado.');
+    }
+    return parsed.data.embeddings.map((v) => Float32Array.from(v));
+  }
+
+  private async postJson(path: string, payload: unknown, signal?: AbortSignal): Promise<unknown> {
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        ...(signal ? { signal } : {}),
+      });
+    } catch (err) {
+      if (signal?.aborted || isAbortError(err)) throw LlmError.aborted();
+      throw LlmError.unavailable(this.baseUrl, err);
+    }
+    if (!res.ok) throw await this.httpError(res);
+    try {
+      return await res.json();
+    } catch (err) {
+      if (signal?.aborted || isAbortError(err)) throw LlmError.aborted();
+      throw new LlmError('bad_response', 'O Ollama mandou uma resposta incompleta.', {
+        cause: err,
+      });
+    }
   }
 
   private async httpError(res: Response): Promise<LlmError> {

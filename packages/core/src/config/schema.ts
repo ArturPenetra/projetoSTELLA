@@ -3,6 +3,7 @@ import { isLoopbackUrl } from '../network-policy.js';
 
 export const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434';
 export const DEFAULT_CHAT_MODEL = 'qwen3.5:2b';
+export const DEFAULT_EMBEDDING_MODEL = 'bge-m3';
 
 const loopbackUrl = z
   .string()
@@ -22,8 +23,18 @@ export const llmConfigSchema = z.object({
   think: z.boolean().default(false),
 });
 
+export const memoryConfigSchema = z.object({
+  /** Desligada, a Stella não guarda conversas nem aprende fatos. */
+  enabled: z.boolean().default(true),
+  /** Modelo do Ollama que gera os embeddings dos fatos. */
+  embeddingModel: z.string().trim().min(1).default(DEFAULT_EMBEDDING_MODEL),
+  /** Quantos fatos entram no prompt a cada mensagem. */
+  topK: z.number().int().min(1).max(20).default(5),
+});
+
 export const appConfigSchema = z.object({
   llm: llmConfigSchema.prefault({}),
+  memory: memoryConfigSchema.prefault({}),
   ui: z
     .object({
       language: z.enum(['pt-BR', 'en']).default('pt-BR'),
@@ -32,6 +43,7 @@ export const appConfigSchema = z.object({
 });
 
 export type LlmConfig = z.infer<typeof llmConfigSchema>;
+export type MemoryConfig = z.infer<typeof memoryConfigSchema>;
 export type AppConfig = z.infer<typeof appConfigSchema>;
 
 export class ConfigError extends Error {

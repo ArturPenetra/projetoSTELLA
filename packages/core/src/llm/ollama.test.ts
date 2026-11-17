@@ -166,3 +166,61 @@ describe('sameModel', () => {
     expect(sameModel('qwen3.5:4b', 'qwen3.5:2b')).toBe(false);
   });
 });
+
+describe('complete', () => {
+  it('pede resposta única com o esquema JSON e devolve o texto', async () => {
+    fake = await startFakeOllama({ complete: () => '{"facts":[{"text":"x"}]}' });
+    const client = new OllamaClient({ baseUrl: fake.url, model: 'qwen3.5:2b' });
+    const schema = { type: 'object' };
+    const text = await client.complete([{ role: 'user', content: 'oi' }], { format: schema });
+    expect(text).toBe('{"facts":[{"text":"x"}]}');
+    expect(fake.completions[0]).toMatchObject({
+      model: 'qwen3.5:2b',
+      stream: false,
+      think: false,
+      format: schema,
+      options: { temperature: 0 },
+    });
+    expect(fake.requests).toHaveLength(0);
+  });
+
+  it('com o Ollama desligado, gera "unavailable"', async () => {
+    const client = new OllamaClient({ baseUrl: await deadPort(), model: 'qwen3.5:2b' });
+    expect((await catchError(client.complete([]))).code).toBe('unavailable');
+  });
+
+  it('modelo não instalado vira "model_missing"', async () => {
+    fake = await startFakeOllama();
+    const client = new OllamaClient({ baseUrl: fake.url, model: 'outro:1b' });
+    expect((await catchError(client.complete([]))).code).toBe('model_missing');
+  });
+});
+
+describe('embed', () => {
+  it('devolve um vetor por texto', async () => {
+    fake = await startFakeOllama({ embed: (t) => [t.length, 1] });
+    const client = new OllamaClient({ baseUrl: fake.url, model: 'bge-m3' });
+    const vectors = await client.embed(['oi', 'tudo bem']);
+    expect(vectors).toEqual([Float32Array.from([2, 1]), Float32Array.from([8, 1])]);
+    expect(fake.embedded).toEqual(['oi', 'tudo bem']);
+  });
+
+  it('lista vazia não chama o servidor', async () => {
+    const client = new OllamaClient({ baseUrl: await deadPort(), model: 'bge-m3' });
+    expect(await client.embed([])).toEqual([]);
+  });
+
+  it('modelo de embedding faltando vira "model_missing"', async () => {
+    fake = await startFakeOllama({ models: ['qwen3.5:2b'] });
+    const client = new OllamaClient({ baseUrl: fake.url, model: 'bge-m3' });
+    expect((await catchError(client.embed(['oi']))).code).toBe('model_missing');
+  });
+
+  it('pode ser cancelado', async () => {
+    fake = await startFakeOllama();
+    const client = new OllamaClient({ baseUrl: fake.url, model: 'bge-m3' });
+    const abort = new AbortController();
+    abort.abort();
+    expect((await catchError(client.embed(['oi'], abort.signal))).code).toBe('aborted');
+  });
+});

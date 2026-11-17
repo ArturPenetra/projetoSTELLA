@@ -30,3 +30,21 @@ export interface LlmClient {
   /** Confere se o servidor está no ar e se o modelo está instalado. */
   status(): Promise<LlmStatus>;
 }
+
+export interface CompleteOptions {
+  signal?: AbortSignal;
+  /** Esquema JSON que a resposta deve seguir (saída estruturada do Ollama). */
+  format?: Record<string, unknown>;
+  temperature?: number;
+}
+
+/** Resposta única, sem streaming (usada em tarefas internas, como extrair fatos). */
+export interface Completer {
+  complete(messages: ChatMessage[], options?: CompleteOptions): Promise<string>;
+}
+
+/** Transforma textos em vetores (embeddings) para busca por similaridade. */
+export interface Embedder {
+  readonly model: string;
+  embed(texts: string[], signal?: AbortSignal): Promise<Float32Array[]>;
+}
