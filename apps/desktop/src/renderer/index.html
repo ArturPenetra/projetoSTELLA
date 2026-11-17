@@ -15,9 +15,20 @@
         <span id="status-dot" class="dot" aria-hidden="true"></span>
         <h1>Stella</h1>
       </div>
-      <button id="reset" class="ghost" type="button" title="Começar uma conversa nova">
-        Nova conversa
-      </button>
+      <div class="actions">
+        <button
+          id="memory-open"
+          class="ghost"
+          type="button"
+          title="Ver o que a Stella lembra sobre você"
+          aria-controls="memory-panel"
+        >
+          Memória
+        </button>
+        <button id="reset" class="ghost" type="button" title="Começar uma conversa nova">
+          Nova conversa
+        </button>
+      </div>
     </header>
 
     <div id="banner" class="banner" role="status" hidden>
@@ -39,6 +50,37 @@
       ></textarea>
       <button id="send" type="submit">Enviar</button>
     </form>
+
+    <section
+      id="memory-panel"
+      class="memory-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="memory-title"
+      hidden
+    >
+      <header class="memory-head">
+        <h2 id="memory-title">O que a Stella lembra</h2>
+        <button id="memory-close" class="ghost" type="button">Fechar</button>
+      </header>
+      <p id="memory-status" class="memory-status"></p>
+      <ul id="memory-list" class="memory-list"></ul>
+      <p id="memory-empty" class="empty" hidden>
+        Ainda não guardei nada sobre você. Conte seu nome, seus gostos ou suas metas, e eu lembro
+        nas próximas conversas.
+      </p>
+      <footer class="memory-foot">
+        <p class="hint">
+          Apagar vale a partir da próxima mensagem. O que já foi dito nesta conversa continua no
+          contexto até você clicar em "Nova conversa".
+        </p>
+        <label class="check">
+          <input id="memory-clear-history" type="checkbox" />
+          Apagar também o histórico de conversas
+        </label>
+        <button id="memory-clear" class="danger" type="button">Esquecer tudo</button>
+      </footer>
+    </section>
 
     <script type="module" src="./main.ts"></script>
   </body>

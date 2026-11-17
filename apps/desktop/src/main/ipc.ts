@@ -1,5 +1,5 @@
 import { ipcMain, type BrowserWindow } from 'electron';
-import type { AvatarDirector, LlmClient } from '@stella/core';
+import type { AvatarDirector, LlmClient, Memory } from '@stella/core';
 import { IPC, type ChatEvent } from '../shared/ipc.js';
 import { ChatController } from './chat-controller.js';
 import { assertSender } from './ipc-guard.js';
@@ -24,12 +24,13 @@ export function registerChatIpc(
   win: BrowserWindow,
   llm: LlmClient,
   director: AvatarDirector,
+  memory?: Memory,
 ): ChatController {
   const emit = (event: ChatEvent) => {
     if (!win.isDestroyed()) win.webContents.send(IPC.chatEvent, event);
     feedAvatar(director, event);
   };
-  const chat = new ChatController(llm, emit);
+  const chat = new ChatController(llm, emit, memory);
 
   ipcMain.handle(IPC.llmStatus, (event) => {
     assertSender(event, win);

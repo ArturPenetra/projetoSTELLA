@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ChatSession, LlmError, type LlmClient } from '@stella/core';
+import { ChatSession, LlmError, type LlmClient, type Memory } from '@stella/core';
 import { MAX_MESSAGE_LENGTH, type ChatEvent } from '../shared/ipc.js';
 
 /**
@@ -13,8 +13,13 @@ export class ChatController {
   constructor(
     private readonly llm: LlmClient,
     private readonly emit: (event: ChatEvent) => void,
+    private readonly memory?: Memory,
   ) {
-    this.session = new ChatSession(llm);
+    this.session = this.newSession();
+  }
+
+  private newSession(): ChatSession {
+    return new ChatSession(this.llm, this.memory ? { memory: this.memory } : {});
   }
 
   send(text: unknown): { requestId: string } {
@@ -41,7 +46,8 @@ export class ChatController {
 
   reset(): void {
     this.current?.abort.abort();
-    this.session = new ChatSession(this.llm);
+    this.session = this.newSession();
+    this.memory?.newConversation();
   }
 
   /** Espera a resposta em andamento terminar (usado nos testes e ao fechar o app). */

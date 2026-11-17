@@ -1,9 +1,21 @@
+import { join } from 'node:path';
 import { app, BrowserWindow, dialog, session, type Tray } from 'electron';
-import { APP_NAME, AvatarDirector, isRequestAllowed, OllamaClient } from '@stella/core';
+import {
+  APP_NAME,
+  AvatarDirector,
+  FactExtractor,
+  isRequestAllowed,
+  Memory,
+  MemoryStore,
+  OllamaClient,
+  type AppConfig,
+  type Fact,
+} from '@stella/core';
 import { IPC } from '../shared/ipc.js';
 import { registerCompanionIpc } from './companion-ipc.js';
 import { loadConfig } from './config.js';
 import { registerChatIpc } from './ipc.js';
+import { registerMemoryIpc, toFactView } from './memory-ipc.js';
 import { buildAppMenu, createTray, type AppMenuActions } from './tray.js';
 import { CompanionStateStore } from './window-position.js';
 import { companionPosition, createChatWindow, createCompanionWindow, showChat } from './windows.js';
@@ -29,6 +41,9 @@ app.setName(APP_NAME);
 const userDataOverride = process.env['STELLA_USER_DATA_DIR'];
 if (userDataOverride) app.setPath('userData', userDataOverride);
 
+/** Espera máxima por uma extração de fatos em andamento ao fechar o app. */
+const MEMORY_FLUSH_TIMEOUT_MS = 5000;
+
 let quitting = false;
 let tray: Tray | undefined;
 let chatWindow: BrowserWindow | undefined;
@@ -41,6 +56,36 @@ if (!app.requestSingleInstanceLock()) {
     if (chatWindow) showChat(chatWindow);
   });
   void app.whenReady().then(start);
+}
+
+/**
+ * Abre a memória (SQLite na pasta de dados). Se estiver desligada ou não abrir, o chat
+ * continua funcionando sem ela e a tela de memória explica o motivo.
+ */
+function openMemory(
+  config: AppConfig,
+  chatLlm: OllamaClient,
+  userData: string,
+  onAdded: (facts: Fact[]) => void,
+): { memory?: Memory; reason: string } {
+  if (!config.memory.enabled) {
+    return { reason: 'A memória está desligada (memory.enabled no config.json).' };
+  }
+  try {
+    const store = new MemoryStore(join(userData, 'memoria.db'));
+    const embedder = new OllamaClient({
+      baseUrl: config.llm.baseUrl,
+      model: config.memory.embeddingModel,
+    });
+    const memory = new Memory(store, embedder, new FactExtractor(chatLlm), {
+      topK: config.memory.topK,
+      onFactsAdded: onAdded,
+    });
+    return { memory, reason: '' };
+  } catch (err) {
+    console.error('[memória] não abriu', err);
+    return { reason: 'Não consegui abrir o arquivo da memória. O chat funciona, mas sem lembrar.' };
+  }
 }
 
 async function start(): Promise<void> {
@@ -77,7 +122,17 @@ async function start(): Promise<void> {
     quit: () => app.quit(),
   };
 
-  registerChatIpc(chat, new OllamaClient(config.llm), director);
+  const chatLlm = new OllamaClient(config.llm);
+  const { memory, reason } = openMemory(config, chatLlm, userData, (facts) => {
+    if (!chat.isDestroyed()) {
+      chat.webContents.send(IPC.memoryEvent, { type: 'added', facts: facts.map(toFactView) });
+    }
+  });
+  // Carrega o modelo de embedding em segundo plano: a frio ele leva vários segundos.
+  void memory?.warmUp();
+
+  registerChatIpc(chat, chatLlm, director, memory);
+  registerMemoryIpc(chat, memory, reason);
   registerCompanionIpc(companion, director, {
     openChat: actions.openChat,
     openMenu: () => buildAppMenu(actions).popup({ window: companion }),
@@ -96,10 +151,24 @@ async function start(): Promise<void> {
     chat.once('ready-to-show', () => showChat(chat));
   }
 
-  app.on('before-quit', () => {
+  let memoryClosed = !memory;
+  app.on('before-quit', (event) => {
     quitting = true;
     director.dispose();
     tray?.destroy();
+    if (memoryClosed || !memory) return;
+    // Termina de guardar o que a Stella acabou de aprender antes de fechar o banco.
+    event.preventDefault();
+    const timeout = new Promise((r) => setTimeout(r, MEMORY_FLUSH_TIMEOUT_MS));
+    void Promise.race([memory.whenIdle(), timeout]).finally(() => {
+      memoryClosed = true;
+      try {
+        memory.store.close();
+      } catch (err) {
+        console.warn('[memória] erro ao fechar', err);
+      }
+      app.quit();
+    });
   });
 }
 

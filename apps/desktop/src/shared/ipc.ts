@@ -7,6 +7,12 @@ export const IPC = {
   chatCancel: 'chat:cancel',
   chatReset: 'chat:reset',
   chatEvent: 'chat:event',
+  memoryStatus: 'memory:status',
+  memoryList: 'memory:list',
+  memoryUpdate: 'memory:update',
+  memoryDelete: 'memory:delete',
+  memoryClear: 'memory:clear',
+  memoryEvent: 'memory:event',
   avatarState: 'avatar:state',
   avatarGet: 'avatar:get',
   companionInteractive: 'companion:interactive',
@@ -24,6 +30,22 @@ export type ChatEvent =
   | { requestId: string; type: 'done'; outputTokens?: number; totalMs?: number }
   | { requestId: string; type: 'error'; code: LlmErrorCode | 'internal'; message: string };
 
+/** Um fato como a tela de memória mostra. */
+export interface FactView {
+  id: number;
+  text: string;
+  sensitive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type MemoryStatus =
+  { enabled: true; factCount: number } | { enabled: false; reason: string };
+
+export type MemoryEvent = { type: 'added'; facts: FactView[] };
+
+export const MAX_FACT_LENGTH = 300;
+
 export interface StellaApi {
   appName: string;
   versions: { electron: string; chrome: string; node: string };
@@ -36,6 +58,16 @@ export interface StellaApi {
     cancel(requestId: string): Promise<void>;
     reset(): Promise<void>;
     onEvent(listener: (event: ChatEvent) => void): () => void;
+  };
+  memory: {
+    status(): Promise<MemoryStatus>;
+    list(): Promise<FactView[]>;
+    update(id: number, text: string): Promise<FactView>;
+    delete(id: number): Promise<void>;
+    /** Esquece todos os fatos; com `history`, apaga também as conversas guardadas. */
+    clear(options: { history: boolean }): Promise<void>;
+    /** Avisa quando a Stella guarda fatos novos. */
+    onEvent(listener: (event: MemoryEvent) => void): () => void;
   };
 }
 

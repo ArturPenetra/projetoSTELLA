@@ -1,5 +1,6 @@
 import type { LlmStatus } from '@stella/core';
 import type { ChatEvent, StellaApi } from '../shared/ipc.js';
+import { cleanIpcError, setupMemoryPanel } from './memory-panel.js';
 
 declare global {
   interface Window {
@@ -71,12 +72,6 @@ function finish(): void {
   input.focus();
 }
 
-/** Mensagem de erro do IPC sem o prefixo técnico do Electron. */
-function cleanIpcError(err: unknown): string {
-  const text = err instanceof Error ? err.message : String(err);
-  return text.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
-}
-
 stella.chat.onEvent((event: ChatEvent) => {
   if (event.requestId !== currentRequest || !currentBubble) return;
   switch (event.type) {
@@ -139,6 +134,24 @@ resetButton.addEventListener('click', () => {
 });
 
 retryButton.addEventListener('click', () => void refreshStatus());
+
+const memoryPanel = setupMemoryPanel(stella, $<HTMLButtonElement>('memory-open'));
+
+// Transparência: quando a Stella guarda algo, aparece um aviso discreto na conversa.
+stella.memory.onEvent((event) => {
+  if (event.type !== 'added') return;
+  for (const fact of event.facts) {
+    empty.hidden = true;
+    const note = document.createElement('button');
+    note.type = 'button';
+    note.className = 'msg note';
+    note.textContent = `Guardei na memória: ${fact.text}`;
+    note.title = 'Ver ou apagar o que a Stella lembra';
+    note.addEventListener('click', () => memoryPanel.open());
+    messages.append(note);
+  }
+  messages.scrollTop = messages.scrollHeight;
+});
 
 void refreshStatus();
 setInterval(() => void refreshStatus(), 10_000);
