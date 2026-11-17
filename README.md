@@ -4,7 +4,7 @@
 
 A Stella é uma companheira de IA para desktop que roda **100% no seu computador**. Ela aparece como um avatar animado na tela, conversa por texto e voz e lembra do que você contou. São 12 personas inspiradas nos signos do Zodíaco, e 4 delas estão ativas no lançamento: Leo, Corni, Aqua e Pixi. Nada sai da sua máquina: sem nuvem, sem chave de API, sem telemetria.
 
-> Em desenvolvimento. Fase atual: **3 — Avatar e janela de companheira** (concluída).
+> Em desenvolvimento. Fase atual: **4 — Memória** (concluída).
 
 ## Requisitos
 
@@ -36,6 +36,9 @@ npm run dev
 - **Clique direito** nela ou no ícone da bandeja: abrir o chat, esconder/mostrar a Stella e sair.
 - Fechar o chat só esconde a janela; para sair de vez, use **Sair** no menu.
 - Enquanto responde, ela pensa, fala e fica feliz quando termina; o balão mostra o começo da resposta.
+- **Memória:** quando você conta algo sobre você (nome, onde mora, gostos, metas), ela guarda e avisa na conversa ("Guardei na memória: ..."). Nas próximas conversas, ela lembra.
+- No botão **Memória** do chat você vê tudo o que ela guardou e pode editar, esquecer um fato ou esquecer tudo (inclusive o histórico de conversas).
+- Tudo fica num arquivo no seu computador (`memoria.db`, na pasta de dados do app). Para não guardar nada, use `"memory": { "enabled": false }` no `config.json`.
 
 ## Estrutura
 

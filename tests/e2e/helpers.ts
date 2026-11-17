@@ -15,7 +15,8 @@ export interface Launched {
   dir: string;
   companion: Page;
   chat: Page;
-  close(): Promise<void>;
+  /** Fecha o app. Com `keepData`, a pasta de dados fica para reabrir depois. */
+  close(options?: { keepData?: boolean }): Promise<void>;
 }
 
 /** Espera a janela cujo endereço termina com `page` (index.html ou companion.html). */
@@ -28,12 +29,16 @@ async function windowFor(app: ElectronApplication, page: string): Promise<Page> 
   return win;
 }
 
-/** Abre a Stella com uma pasta de dados temporária apontando para o Ollama informado. */
+/**
+ * Abre a Stella apontando para o Ollama informado, com uma pasta de dados temporária
+ * (ou com `dir`, para reabrir o app com os dados de antes).
+ */
 export async function launch(
   ollamaUrl: string,
   files: Record<string, unknown> = {},
+  options: { dir?: string } = {},
 ): Promise<Launched> {
-  const dir = await mkdtemp(join(tmpdir(), 'stella-e2e-'));
+  const dir = options.dir ?? (await mkdtemp(join(tmpdir(), 'stella-e2e-')));
   await writeFile(
     join(dir, 'config.json'),
     JSON.stringify({ llm: { baseUrl: ollamaUrl, model: 'qwen3.5:2b' } }),
@@ -54,9 +59,9 @@ export async function launch(
     dir,
     companion,
     chat,
-    close: async () => {
+    close: async ({ keepData = false } = {}) => {
       await app.close();
-      await rm(dir, { recursive: true, force: true });
+      if (!keepData) await rm(dir, { recursive: true, force: true });
     },
   };
 }

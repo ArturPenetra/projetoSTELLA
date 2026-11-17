@@ -21,6 +21,8 @@ Companheira de IA para desktop (Windows) que roda **100% local**: avatar animado
 - `apps/desktop` (`@stella/desktop`) contém as janelas, a bandeja, o IPC e o ciclo de vida do Ollama.
 - Duas janelas, cada uma com o próprio preload e só a própria API: **companheira** (`companion.html`, `window.companion`: avatar transparente, sempre no topo, `focusable: false` para nunca roubar o foco, cliques atravessam fora do desenho) e **chat** (`index.html`, `window.stella`; fechar só esconde). O processo principal confere a janela de origem de cada canal (`ipc-guard.ts`).
 - O estado do avatar (parado, pensando, falando, feliz) e o balão são decididos por `AvatarDirector` em `@stella/core`, alimentado pelos eventos do chat.
+- **Memória** (`packages/core/src/memory/`): `MemoryStore` (SQLite + sqlite-vec, arquivo `memoria.db` na pasta de dados; histórico com `persona_id`, fatos e índice vetorial de cosseno), `FactExtractor` (o LLM tira fatos da mensagem do usuário em JSON com esquema) e `Memory` (junta tudo; fatos repetidos com distância ≤ 0,07 não são salvos; com até `topK` fatos vão todos ao prompt, acima disso busca vetorial). Embedding e extração nunca derrubam o chat: falhou, a conversa segue sem lembrar.
+- Com o qwen3.5:2b, mostrar ao extrator os fatos já salvos piorou o resultado (ele repete a lista). Fatos que mudam ("mudou de cidade") ficam os dois, com data, e o prompt manda valer o mais recente.
 - Preloads rodam em sandbox e não podem dar `require` em arquivos vizinhos: o build usa `isolatedEntries` para cada preload sair num arquivo só.
 - Testes obrigatórios para toda lógica nova. Arquivos de teste ficam ao lado do código: `*.test.ts`.
 - Textos de interface e mensagens de commit em **pt-BR**.
