@@ -1,0 +1,27 @@
+{
+  "$comment": "As 4 paletas do avatar (uma por elemento). As cores do SVG em assets/avatar/zodi-avatar.svg seguem esta tabela; um teste confere.",
+  "fogo": {
+    "primaria": "#E8892B",
+    "secundaria": "#F4C04E",
+    "profunda": "#9C3D12",
+    "brilho": "#FFD58A"
+  },
+  "terra": {
+    "primaria": "#5E7A3E",
+    "secundaria": "#B07D4F",
+    "profunda": "#3B4A27",
+    "brilho": "#D3E0A8"
+  },
+  "ar": {
+    "primaria": "#2F7BEA",
+    "secundaria": "#B8C4D6",
+    "profunda": "#1B3F80",
+    "brilho": "#A9D1FF"
+  },
+  "agua": {
+    "primaria": "#9A7FD1",
+    "secundaria": "#4FC3B8",
+    "profunda": "#5B4590",
+    "brilho": "#C7F0EA"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "gemi",
+  "name": "Gemi",
+  "sign": "gemini",
+  "element": "ar",
+  "status": "planned",
+  "gender": "feminine",
+  "role": "Conversa e curiosidade",
+  "coreTrait": "Conversa leve, curiosidade por tudo",
+  "unexpectedSide": "Escuta melhor do que parece",
+  "greeting": "Oi! Me conta uma coisa que você descobriu essa semana?",
+  "fallbackFor": []
+}

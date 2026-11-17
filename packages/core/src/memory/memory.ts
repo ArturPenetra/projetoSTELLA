@@ -7,8 +7,13 @@ export interface MemoryOptions {
   topK?: number;
   /** Distância de cosseno abaixo da qual um fato novo é considerado repetido. */
   duplicateDistance?: number;
-  /** Persona que está conversando (até a Fase 5, sempre "stella"). */
+  /** Persona padrão quando a troca não informa quem falou. */
   personaId?: string;
+  /**
+   * Como citar a persona que ouviu um fato ("ao Leo", "à Corni"). Sem nome conhecido, o
+   * fato aparece sem origem.
+   */
+  personaLabel?: (personaId: string) => string | undefined;
   /** Avisa quando fatos novos foram guardados. */
   onFactsAdded?: (facts: Fact[]) => void;
   log?: (message: string, err?: unknown) => void;
@@ -16,18 +21,37 @@ export interface MemoryOptions {
 
 /** O que a sessão de chat precisa da memória. */
 export interface ConversationMemory {
-  /** Texto com as lembranças relevantes para a mensagem, ou `undefined` se não houver. */
-  recall(text: string, signal?: AbortSignal): Promise<string | undefined>;
+  /**
+   * Texto com as lembranças relevantes para a mensagem, ou `undefined` se não houver.
+   * `personaId` é quem vai responder (fatos ouvidos por outra persona ganham a origem).
+   */
+  recall(text: string, signal?: AbortSignal, personaId?: string): Promise<string | undefined>;
   /** Guarda a troca no histórico e, em segundo plano, extrai fatos dela. */
-  record(exchange: { user: string; assistant: string; previousAssistant?: string }): void;
+  record(exchange: Exchange): void;
+}
+
+export interface Exchange {
+  user: string;
+  assistant: string;
+  /** Persona que respondeu (e que "ouviu" os fatos desta mensagem). */
+  personaId?: string;
+  previousAssistant?: string;
 }
 
 // Medido com o bge-m3: o mesmo fato com outras palavras fica a ~0,02; fatos diferentes
 // sobre o mesmo assunto ("mora em Curitiba" × "mora em São Paulo"), a ~0,14.
 const DEFAULT_DUPLICATE_DISTANCE = 0.07;
 
+export interface FormatOptions {
+  locale?: string;
+  /** Persona que vai responder: fatos que ela mesma ouviu não precisam de origem. */
+  currentPersonaId?: string;
+  personaLabel?: (personaId: string) => string | undefined;
+}
+
 /** Formata as lembranças para o prompt do sistema. */
-export function formatMemoryPrompt(facts: Fact[], locale = 'pt-BR'): string | undefined {
+export function formatMemoryPrompt(facts: Fact[], options: FormatOptions = {}): string | undefined {
+  const { locale = 'pt-BR', currentPersonaId, personaLabel } = options;
   if (facts.length === 0) return undefined;
   const date = new Intl.DateTimeFormat(locale, {
     day: '2-digit',
@@ -38,7 +62,9 @@ export function formatMemoryPrompt(facts: Fact[], locale = 'pt-BR'): string | un
     .sort((a, b) => a.updatedAt - b.updatedAt || a.id - b.id)
     .map((f) => {
       const note = f.sensitive ? ' [assunto delicado: só comente se o usuário falar disso]' : '';
-      return `- ${f.text} (${date.format(f.updatedAt)})${note}`;
+      const label = f.personaId !== currentPersonaId ? personaLabel?.(f.personaId) : undefined;
+      const origin = label ? `, contou ${label}` : '';
+      return `- ${f.text} (${date.format(f.updatedAt)}${origin})${note}`;
     });
   return [
     'O que você lembra sobre o usuário, de conversas anteriores:',
@@ -101,8 +127,15 @@ export class Memory implements ConversationMemory {
   }
 
   /** Lembranças relevantes para a mensagem, prontas para o prompt. */
-  async recall(text: string, signal?: AbortSignal): Promise<string | undefined> {
-    return formatMemoryPrompt(await this.relevantFacts(text, signal));
+  async recall(
+    text: string,
+    signal?: AbortSignal,
+    personaId?: string,
+  ): Promise<string | undefined> {
+    return formatMemoryPrompt(await this.relevantFacts(text, signal), {
+      ...(personaId ? { currentPersonaId: personaId } : {}),
+      ...(this.options.personaLabel ? { personaLabel: this.options.personaLabel } : {}),
+    });
   }
 
   /** Até `topK` fatos. Com poucos fatos, vão todos (não precisa calcular embedding). */
@@ -121,17 +154,13 @@ export class Memory implements ConversationMemory {
     return [...all].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, this.topK);
   }
 
-  record(exchange: { user: string; assistant: string; previousAssistant?: string }): void {
+  record(exchange: Exchange): void {
+    const personaId = exchange.personaId ?? this.personaId;
     this.conversationId ??= this.store.startConversation();
-    const messageId = this.store.addMessage(
-      this.conversationId,
-      'user',
-      exchange.user,
-      this.personaId,
-    );
-    this.store.addMessage(this.conversationId, 'assistant', exchange.assistant, this.personaId);
+    const messageId = this.store.addMessage(this.conversationId, 'user', exchange.user, personaId);
+    this.store.addMessage(this.conversationId, 'assistant', exchange.assistant, personaId);
     // Uma extração por vez, na ordem das mensagens.
-    this.queue = this.queue.then(() => this.learn(exchange, messageId));
+    this.queue = this.queue.then(() => this.learn(exchange, messageId, personaId));
   }
 
   /** Espera as extrações pendentes (testes e fechamento do app). */
@@ -147,6 +176,7 @@ export class Memory implements ConversationMemory {
   private async learn(
     exchange: { user: string; previousAssistant?: string },
     sourceMessageId: number,
+    personaId: string,
   ): Promise<void> {
     let extracted: ExtractedFact[];
     try {
@@ -181,7 +211,7 @@ export class Memory implements ConversationMemory {
       }
       added.push(
         this.store.addFact(
-          { text: f.text, sensitive: f.sensitive, personaId: this.personaId, sourceMessageId },
+          { text: f.text, sensitive: f.sensitive, personaId, sourceMessageId },
           vector,
         ),
       );

@@ -1,0 +1,13 @@
+{
+  "id": "ari",
+  "name": "Ari",
+  "sign": "aries",
+  "element": "fogo",
+  "status": "planned",
+  "gender": "feminine",
+  "role": "Iniciativa e coragem",
+  "coreTrait": "Iniciativa: propõe o primeiro passo",
+  "unexpectedSide": "Fica tímida com elogios",
+  "greeting": "Oi! Bora dar o primeiro passo juntos?",
+  "fallbackFor": []
+}

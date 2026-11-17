@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LlmError } from '../llm/errors.js';
 import type { ChatChunk, ChatMessage, LlmClient, LlmStatus } from '../llm/types.js';
-import { ChatSession, DEFAULT_SYSTEM_PROMPT } from './session.js';
+import { ChatSession, DEFAULT_SYSTEM_PROMPT, SpeakerTagFilter } from './session.js';
 
 class ScriptedLlm implements LlmClient {
   calls: ChatMessage[][] = [];
@@ -35,7 +35,7 @@ describe('ChatSession', () => {
     expect(llm.calls[0]?.[0]).toEqual({ role: 'system', content: DEFAULT_SYSTEM_PROMPT });
     expect(session.messages).toEqual([
       { role: 'user', content: 'Olá' },
-      { role: 'assistant', content: 'Oi!' },
+      { role: 'assistant', content: 'Oi!', speakerId: 'stella', speakerName: 'Stella' },
     ]);
   });
 
@@ -117,8 +117,13 @@ describe('ChatSession', () => {
       await drain(session.send('Oi'));
       await drain(session.send('Ana'));
       expect(memory.recorded).toEqual([
-        { user: 'Oi', assistant: 'Qual é o seu nome?' },
-        { user: 'Ana', assistant: 'Prazer, Ana!', previousAssistant: 'Qual é o seu nome?' },
+        { user: 'Oi', assistant: 'Qual é o seu nome?', personaId: 'stella' },
+        {
+          user: 'Ana',
+          assistant: 'Prazer, Ana!',
+          personaId: 'stella',
+          previousAssistant: 'Qual é o seu nome?',
+        },
       ]);
     });
 
@@ -134,5 +139,113 @@ describe('ChatSession', () => {
       await expect(drain(session.send('Oi'))).rejects.toThrow('fora do ar');
       expect(await drain(session.send('Oi'))).toBe('Oi!');
     });
+  });
+
+  describe('com personas', () => {
+    const leo = { id: 'leo', name: 'Leo', systemPrompt: 'Você é o Leo.' };
+    const corni = { id: 'corni', name: 'Corni', systemPrompt: 'Você é a Corni.' };
+
+    it('ao trocar, a nova persona vê as falas da anterior com o nome dela', async () => {
+      const llm = new ScriptedLlm([['Bora treinar!'], ['Vamos organizar.']]);
+      const session = new ChatSession(llm, { speaker: leo });
+      await drain(session.send('Quero treinar'));
+      session.setSpeaker(corni);
+      await drain(session.send('E agora?'));
+
+      expect(llm.calls[1]).toEqual([
+        { role: 'system', content: 'Você é a Corni.' },
+        { role: 'user', content: 'Quero treinar' },
+        { role: 'assistant', content: '[Leo] Bora treinar!' },
+        { role: 'user', content: 'E agora?' },
+      ]);
+    });
+
+    it('as próprias falas vão sem rótulo', async () => {
+      const llm = new ScriptedLlm([['Um'], ['Dois']]);
+      const session = new ChatSession(llm, { speaker: leo });
+      await drain(session.send('a'));
+      await drain(session.send('b'));
+      expect(llm.calls[1]?.[2]).toEqual({ role: 'assistant', content: 'Um' });
+    });
+
+    it('instrução oculta não entra no histórico nem na memória; a resposta entra', async () => {
+      const recorded: unknown[] = [];
+      const recalled: (string | undefined)[][] = [];
+      const memory = {
+        recall: async (text: string, _signal?: AbortSignal, personaId?: string) => {
+          recalled.push([text, personaId]);
+          return undefined;
+        },
+        record: (e: unknown) => recorded.push(e),
+      };
+      const llm = new ScriptedLlm([['Bora!'], ['Oi, aqui é a Corni.']]);
+      const session = new ChatSession(llm, { speaker: leo, memory });
+      await drain(session.send('Quero treinar'));
+      session.setSpeaker(corni);
+      await drain(session.send('(instrução do app)', { hidden: true }));
+
+      expect(llm.calls[1]?.at(-1)).toEqual({ role: 'user', content: '(instrução do app)' });
+      expect(session.messages.map((m) => m.content)).toEqual([
+        'Quero treinar',
+        'Bora!',
+        'Oi, aqui é a Corni.',
+      ]);
+      expect(session.messages.at(-1)?.speakerId).toBe('corni');
+      expect(recorded).toHaveLength(1);
+      // A busca na memória usa a última mensagem real do usuário, para a persona nova.
+      expect(recalled).toEqual([
+        ['Quero treinar', 'leo'],
+        ['Quero treinar', 'corni'],
+      ]);
+    });
+  });
+
+  it('nota da persona vai junto da mensagem para o modelo, mas não fica no histórico', async () => {
+    const llm = new ScriptedLlm([['Oi'], ['Tudo']]);
+    const session = new ChatSession(llm, {
+      speaker: {
+        id: 'p',
+        name: 'P',
+        systemPrompt: 'S',
+        turnNote: (t) => (t.includes('signo') ? '(nota)' : undefined),
+      },
+    });
+    await drain(session.send('Qual meu signo?'));
+    await drain(session.send('Oi'));
+    expect(llm.calls[0]?.at(-1)).toEqual({ role: 'user', content: 'Qual meu signo?\n\n(nota)' });
+    expect(llm.calls[1]?.[1]).toEqual({ role: 'user', content: 'Qual meu signo?' });
+    expect(llm.calls[1]?.at(-1)).toEqual({ role: 'user', content: 'Oi' });
+  });
+});
+
+describe('SpeakerTagFilter', () => {
+  const run = (pieces: string[]) => {
+    const f = new SpeakerTagFilter();
+    return pieces.map((p) => f.push(p)).join('') + f.flush();
+  };
+
+  it('tira o rótulo copiado do histórico, mesmo chegando em pedaços', () => {
+    expect(run(['[Leo] Artur, bom dia!'])).toBe('Artur, bom dia!');
+    expect(run(['[', 'Le', 'o]', ' ', 'Oi!'])).toBe('Oi!');
+    expect(run(['  [Corni]   ', 'Foco.'])).toBe('Foco.');
+  });
+
+  it('não mexe no resto do texto', () => {
+    expect(run(['Oi', ' [Leo] tudo bem?'])).toBe('Oi [Leo] tudo bem?');
+    expect(run(['[nota de rodapé muito longa que não é rótulo nenhum] texto'])).toBe(
+      '[nota de rodapé muito longa que não é rótulo nenhum] texto',
+    );
+    expect(run(['[sem fechar'])).toBe('[sem fechar');
+  });
+
+  it('resposta só com o rótulo vira vazia', () => {
+    expect(run(['[Leo] '])).toBe('');
+  });
+
+  it('na sessão, nem o streaming nem o histórico guardam o rótulo', async () => {
+    const llm = new ScriptedLlm([['[Leo', '] Bora', '!']]);
+    const session = new ChatSession(llm);
+    expect(await drain(session.send('Oi'))).toBe('Bora!');
+    expect(session.messages.at(-1)?.content).toBe('Bora!');
   });
 });

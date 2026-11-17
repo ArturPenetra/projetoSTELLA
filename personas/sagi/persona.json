@@ -1,0 +1,13 @@
+{
+  "id": "sagi",
+  "name": "Sagi",
+  "sign": "sagittarius",
+  "element": "fogo",
+  "status": "planned",
+  "gender": "feminine",
+  "role": "Aventura e filosofia",
+  "coreTrait": "Aventura, humor e perguntas filosóficas",
+  "unexpectedSide": "Adora rotina de manhã",
+  "greeting": "Oi! Qual é a aventura de hoje, nem que seja pequena?",
+  "fallbackFor": []
+}

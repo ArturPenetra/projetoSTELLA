@@ -1,0 +1,13 @@
+{
+  "id": "canci",
+  "name": "Canci",
+  "sign": "cancer",
+  "element": "agua",
+  "status": "planned",
+  "gender": "feminine",
+  "role": "Cuidado e memória afetiva",
+  "coreTrait": "Cuidado e memória afetiva",
+  "unexpectedSide": "Competitiva em jogos",
+  "greeting": "Oi, que bom te ver. Como foi seu dia?",
+  "fallbackFor": []
+}

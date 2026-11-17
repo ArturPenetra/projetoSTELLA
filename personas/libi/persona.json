@@ -1,0 +1,13 @@
+{
+  "id": "libi",
+  "name": "Libi",
+  "sign": "libra",
+  "element": "ar",
+  "status": "planned",
+  "gender": "feminine",
+  "role": "Equilíbrio e diplomacia",
+  "coreTrait": "Equilíbrio, diplomacia, senso estético",
+  "unexpectedSide": "Opiniões firmes sobre música",
+  "greeting": "Oi! Vamos achar um meio-termo bonito pra hoje?",
+  "fallbackFor": []
+}

@@ -253,3 +253,45 @@ describe('Memory', () => {
     memory.store.close();
   });
 });
+
+describe('Memory com personas', () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'stella-memory-personas-'));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const labels: Record<string, string> = { leo: 'ao Leo', pixi: 'à Pixi' };
+  const open = () =>
+    new Memory(new MemoryStore(join(dir, 'memoria.db')), new WordsEmbedder(), new RuleExtractor(), {
+      log: () => {},
+      personaLabel: (id) => labels[id],
+    });
+  const leo = { id: 'leo', name: 'Leo', systemPrompt: 'Você é o Leo.' };
+  const pixi = { id: 'pixi', name: 'Pixi', systemPrompt: 'Você é a Pixi.' };
+
+  it('um fato contado ao Leo é lembrado pela Pixi na sessão seguinte, com a origem', async () => {
+    const first = open();
+    await say(new ChatSession(new EchoLlm(), { memory: first, speaker: leo }), 'Meu nome é Artur.');
+    await first.whenIdle();
+    expect(first.listFacts()[0]?.personaId).toBe('leo');
+    expect(first.store.messages(1).map((m) => m.personaId)).toEqual(['leo', 'leo']);
+    first.store.close();
+
+    const second = open();
+    const llm = new EchoLlm();
+    await say(new ChatSession(llm, { memory: second, speaker: pixi }), 'Qual é o meu nome?');
+    expect(llm.systems[0]).toContain('- O usuário se chama Artur. (');
+    expect(llm.systems[0]).toContain(', contou ao Leo)');
+    expect(llm.systems[0]?.startsWith('Você é a Pixi.')).toBe(true);
+
+    // Para o próprio Leo, o fato aparece sem origem.
+    const llmLeo = new EchoLlm();
+    await say(new ChatSession(llmLeo, { memory: second, speaker: leo }), 'Oi');
+    expect(llmLeo.systems[0]).not.toContain('contou');
+    await second.whenIdle();
+    second.store.close();
+  });
+});

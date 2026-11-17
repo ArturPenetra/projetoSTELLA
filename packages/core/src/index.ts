@@ -1,4 +1,4 @@
-export const APP_NAME = 'Stella';
+export { APP_NAME } from './app.js';
 
 export { isLoopbackHost, isLoopbackUrl, isRequestAllowed } from './network-policy.js';
 
@@ -27,7 +27,16 @@ export type {
 export { LlmError, isAbortError, type LlmErrorCode } from './llm/errors.js';
 export { OllamaClient, sameModel, type OllamaClientOptions } from './llm/ollama.js';
 
-export { ChatSession, DEFAULT_SYSTEM_PROMPT, type ChatSessionOptions } from './chat/session.js';
+export {
+  ChatSession,
+  DEFAULT_SPEAKER,
+  DEFAULT_SYSTEM_PROMPT,
+  SpeakerTagFilter,
+  type ChatSessionOptions,
+  type HistoryMessage,
+  type SendOptions,
+  type Speaker,
+} from './chat/session.js';
 
 export {
   AvatarDirector,
@@ -50,6 +59,46 @@ export {
   formatMemoryPrompt,
   Memory,
   type ConversationMemory,
+  type Exchange,
+  type FormatOptions,
   type MemoryOptions,
 } from './memory/memory.js';
 export { MemoryStore, type Fact, type FactMatch, type NewFact } from './memory/store.js';
+
+export {
+  ELEMENT_NAMES,
+  ELEMENTS,
+  elementOf,
+  isValidDayMonth,
+  SIGN_NAMES,
+  SIGNS,
+  signsForDate,
+  type ElementId,
+  type SignId,
+} from './personas/zodiac.js';
+export {
+  loadPersonaCatalog,
+  parsePersona,
+  PersonaCatalog,
+  PersonaCatalogError,
+  type Persona,
+  type PersonaFile,
+} from './personas/catalog.js';
+export {
+  affinityTable,
+  article,
+  idealSign,
+  PREFERENCE_LABELS,
+  PREFERENCES,
+  suggest,
+  suggestionReason,
+  type Preference,
+  type Suggestion,
+} from './personas/affinity.js';
+export {
+  commonRules,
+  handoffInstruction,
+  personaSystemPrompt,
+  signTalkNote,
+  withArticle,
+} from './personas/prompt.js';

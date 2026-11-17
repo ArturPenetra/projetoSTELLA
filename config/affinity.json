@@ -1,0 +1,173 @@
+{
+  "$comment": "Gerado por \"npm run personas:affinity\" a partir de personas/. Para cada signo e preferência: a persona ideal e quem conversa hoje (a ideal, se ativa, ou a substituta do mesmo elemento). Não edite à mão.",
+  "table": {
+    "aries": {
+      "similar": {
+        "ideal": "ari",
+        "persona": "leo"
+      },
+      "compatible": {
+        "ideal": "gemi",
+        "persona": "aqua"
+      },
+      "contrast": {
+        "ideal": "canci",
+        "persona": "pixi"
+      }
+    },
+    "taurus": {
+      "similar": {
+        "ideal": "tauri",
+        "persona": "corni"
+      },
+      "compatible": {
+        "ideal": "canci",
+        "persona": "pixi"
+      },
+      "contrast": {
+        "ideal": "aqua",
+        "persona": "aqua"
+      }
+    },
+    "gemini": {
+      "similar": {
+        "ideal": "gemi",
+        "persona": "aqua"
+      },
+      "compatible": {
+        "ideal": "leo",
+        "persona": "leo"
+      },
+      "contrast": {
+        "ideal": "vivi",
+        "persona": "corni"
+      }
+    },
+    "cancer": {
+      "similar": {
+        "ideal": "canci",
+        "persona": "pixi"
+      },
+      "compatible": {
+        "ideal": "vivi",
+        "persona": "corni"
+      },
+      "contrast": {
+        "ideal": "ari",
+        "persona": "leo"
+      }
+    },
+    "leo": {
+      "similar": {
+        "ideal": "leo",
+        "persona": "leo"
+      },
+      "compatible": {
+        "ideal": "libi",
+        "persona": "aqua"
+      },
+      "contrast": {
+        "ideal": "corp",
+        "persona": "pixi"
+      }
+    },
+    "virgo": {
+      "similar": {
+        "ideal": "vivi",
+        "persona": "corni"
+      },
+      "compatible": {
+        "ideal": "corp",
+        "persona": "pixi"
+      },
+      "contrast": {
+        "ideal": "gemi",
+        "persona": "aqua"
+      }
+    },
+    "libra": {
+      "similar": {
+        "ideal": "libi",
+        "persona": "aqua"
+      },
+      "compatible": {
+        "ideal": "sagi",
+        "persona": "leo"
+      },
+      "contrast": {
+        "ideal": "corni",
+        "persona": "corni"
+      }
+    },
+    "scorpio": {
+      "similar": {
+        "ideal": "corp",
+        "persona": "pixi"
+      },
+      "compatible": {
+        "ideal": "corni",
+        "persona": "corni"
+      },
+      "contrast": {
+        "ideal": "leo",
+        "persona": "leo"
+      }
+    },
+    "sagittarius": {
+      "similar": {
+        "ideal": "sagi",
+        "persona": "leo"
+      },
+      "compatible": {
+        "ideal": "aqua",
+        "persona": "aqua"
+      },
+      "contrast": {
+        "ideal": "pixi",
+        "persona": "pixi"
+      }
+    },
+    "capricorn": {
+      "similar": {
+        "ideal": "corni",
+        "persona": "corni"
+      },
+      "compatible": {
+        "ideal": "pixi",
+        "persona": "pixi"
+      },
+      "contrast": {
+        "ideal": "libi",
+        "persona": "aqua"
+      }
+    },
+    "aquarius": {
+      "similar": {
+        "ideal": "aqua",
+        "persona": "aqua"
+      },
+      "compatible": {
+        "ideal": "ari",
+        "persona": "leo"
+      },
+      "contrast": {
+        "ideal": "tauri",
+        "persona": "corni"
+      }
+    },
+    "pisces": {
+      "similar": {
+        "ideal": "pixi",
+        "persona": "pixi"
+      },
+      "compatible": {
+        "ideal": "tauri",
+        "persona": "corni"
+      },
+      "contrast": {
+        "ideal": "sagi",
+        "persona": "leo"
+      }
+    }
+  }
+}

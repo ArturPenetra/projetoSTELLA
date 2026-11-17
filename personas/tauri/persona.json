@@ -1,0 +1,13 @@
+{
+  "id": "tauri",
+  "name": "Tauri",
+  "sign": "taurus",
+  "element": "terra",
+  "status": "planned",
+  "gender": "feminine",
+  "role": "Calma e constância",
+  "coreTrait": "Calma e constância; valoriza o simples",
+  "unexpectedSide": "Tem um humor absurdo",
+  "greeting": "Oi. Sem pressa: como você está?",
+  "fallbackFor": []
+}
