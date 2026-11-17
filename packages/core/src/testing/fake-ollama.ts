@@ -8,6 +8,8 @@ export interface FakeOllamaOptions {
   reply?: string[];
   /** Espera entre pedaços, em ms. */
   delayMs?: number;
+  /** Espera antes do primeiro pedaço (o modelo "pensando"), em ms. */
+  firstDelayMs?: number;
   /** Comportamento especial do /api/chat. */
   chatMode?: 'ok' | 'error-line' | 'truncated' | 'garbage' | 'http-500';
 }
@@ -26,6 +28,7 @@ export async function startFakeOllama(options: FakeOllamaOptions = {}): Promise<
     models = ['qwen3.5:2b'],
     reply = ['Olá', ', tudo', ' bem?'],
     delayMs = 0,
+    firstDelayMs = 0,
     chatMode = 'ok',
   } = options;
   const requests: unknown[] = [];
@@ -53,6 +56,7 @@ export async function startFakeOllama(options: FakeOllamaOptions = {}): Promise<
         res.end('isto não é json\n');
         return;
       }
+      if (firstDelayMs) await sleep(firstDelayMs);
       for (const piece of reply) {
         if (res.destroyed) return;
         res.write(
