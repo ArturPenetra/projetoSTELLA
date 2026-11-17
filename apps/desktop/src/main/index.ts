@@ -4,17 +4,24 @@ import { app, BrowserWindow, dialog, session, type Tray } from 'electron';
 import {
   APP_NAME,
   AvatarDirector,
+  createOpenAppTool,
+  createReadFileTool,
   FactExtractor,
+  IntentRouter,
   isRequestAllowed,
   loadPersonaCatalog,
   Memory,
   MemoryStore,
   OllamaClient,
+  ToolRunner,
   type AppConfig,
   type Fact,
 } from '@stella/core';
 import { IPC } from '../shared/ipc.js';
 import { registerCompanionIpc } from './companion-ipc.js';
+import { ConfirmBroker } from './confirm-broker.js';
+import { registerToolsIpc } from './tools-ipc.js';
+import { ToolLog, ToolSettingsStore } from './tools-store.js';
 import { loadConfig } from './config.js';
 import { registerChatIpc } from './ipc.js';
 import { registerMemoryIpc, toFactView } from './memory-ipc.js';
@@ -128,6 +135,13 @@ async function start(): Promise<void> {
 
   const store = new CompanionStateStore(userData);
   const saved = await store.load();
+  // Tudo o que vem do disco é lido antes de criar as janelas: os canais de IPC são
+  // registrados logo depois, antes de as páginas rodarem (senão os primeiros pedidos delas
+  // se perdiam, como o nome da persona no balão).
+  const profiles = new ProfileStore(userData);
+  const profile = await profiles.load();
+  const toolStore = new ToolSettingsStore(userData);
+  await toolStore.load();
   const state = { ...saved };
   const persist = () => void store.save(state).catch((e) => console.warn('[companion]', e));
 
@@ -156,15 +170,7 @@ async function start(): Promise<void> {
   // Carrega o modelo de embedding em segundo plano: a frio ele leva vários segundos.
   void memory?.warmUp();
 
-  const profiles = new ProfileStore(userData);
-  const service = new PersonaService(
-    catalog,
-    palettes,
-    profiles,
-    await profiles.load(),
-    () => late.chat,
-    memory,
-  );
+  const service = new PersonaService(catalog, palettes, profiles, profile, () => late.chat, memory);
   late.personas = service;
 
   const actions: AppMenuActions = {
@@ -186,10 +192,34 @@ async function start(): Promise<void> {
     quit: () => app.quit(),
   };
 
+  // Ferramentas: tudo desligado até o usuário ligar. A pasta do app e a de dados nunca são
+  // lidas, e toda ação passa pela confirmação no chat.
+  const toolLog = new ToolLog(userData);
+  const forbiddenDirs = [ROOT, userData];
+  const broker = new ConfirmBroker(
+    (prompt) => {
+      if (chat.isDestroyed()) return;
+      showChat(chat);
+      chat.webContents.send(IPC.toolsConfirm, prompt);
+    },
+    (id) => {
+      if (!chat.isDestroyed()) chat.webContents.send(IPC.toolsConfirmDismiss, id);
+    },
+  );
+  const tools = new ToolRunner([createReadFileTool({ forbiddenDirs }), createOpenAppTool()], {
+    settings: () => toolStore.settings,
+    confirm: (request, signal) => broker.ask(request, service.current.name, signal),
+    // Quem decide as ações vê só a mensagem do usuário (nunca conteúdo de arquivos).
+    router: new IntentRouter(chatLlm),
+    log: (entry) => toolLog.append(entry),
+  });
+
   late.chat = registerChatIpc(chat, chatLlm, director, {
     memory,
     speaker: service.speaker(),
+    tools,
   });
+  registerToolsIpc(chat, toolStore, toolLog, broker, forbiddenDirs);
   registerMemoryIpc(chat, memory, reason);
   registerPersonaIpc(chat, companion, service);
   registerCompanionIpc(companion, director, {
@@ -206,20 +236,30 @@ async function start(): Promise<void> {
     if (tray) updateTray(tray, p);
   });
 
+  // As janelas começam a carregar antes das configurações serem lidas: se a página já
+  // carregou, roda na hora; senão, quando terminar. (Esperar só o evento perdia o
+  // cumprimento quando a janela carregava primeiro.)
+  const whenLoaded = (win: BrowserWindow, run: () => void) => {
+    if (win.isDestroyed()) return;
+    if (!win.webContents.isLoading() && win.webContents.getURL()) run();
+    else win.webContents.once('did-finish-load', run);
+  };
+
   if (!service.onboarded) {
     // Primeira abertura: o chat abre com as boas-vindas e a escolha de persona.
-    chat.once('ready-to-show', () => showChat(chat));
-    companion.webContents.once('did-finish-load', () => director.say(ONBOARDING_HINT));
+    whenLoaded(chat, () => showChat(chat));
+    whenLoaded(companion, () => director.say(ONBOARDING_HINT));
   } else if (saved.visible) {
-    companion.webContents.once('did-finish-load', () => director.say(service.current.greeting));
+    whenLoaded(companion, () => director.say(service.current.greeting));
   } else {
     // Sem o avatar na tela, abre o chat para o app não parecer que não abriu.
-    chat.once('ready-to-show', () => showChat(chat));
+    whenLoaded(chat, () => showChat(chat));
   }
 
   let memoryClosed = !memory;
   app.on('before-quit', (event) => {
     quitting = true;
+    broker.denyAll();
     director.dispose();
     tray?.destroy();
     if (memoryClosed || !memory) return;

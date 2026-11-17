@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
   IPC,
   type ChatEvent,
+  type ConfirmPrompt,
   type MemoryEvent,
   type PersonaView,
   type StellaApi,
@@ -51,6 +52,26 @@ const api: StellaApi = {
       ipcRenderer.on(IPC.personaChanged, handler);
       return () => ipcRenderer.removeListener(IPC.personaChanged, handler);
     },
+  },
+  tools: {
+    state: () => ipcRenderer.invoke(IPC.toolsState),
+    setEnabled: (tool, enabled) => ipcRenderer.invoke(IPC.toolsSetEnabled, tool, enabled),
+    addFolder: () => ipcRenderer.invoke(IPC.toolsAddFolder),
+    removeFolder: (path) => ipcRenderer.invoke(IPC.toolsRemoveFolder, path),
+    addApp: () => ipcRenderer.invoke(IPC.toolsAddApp),
+    removeApp: (name) => ipcRenderer.invoke(IPC.toolsRemoveApp, name),
+    log: () => ipcRenderer.invoke(IPC.toolsLog),
+    onConfirm: (listener) => {
+      const handler = (_e: IpcRendererEvent, prompt: ConfirmPrompt) => listener(prompt);
+      ipcRenderer.on(IPC.toolsConfirm, handler);
+      return () => ipcRenderer.removeListener(IPC.toolsConfirm, handler);
+    },
+    onConfirmDismiss: (listener) => {
+      const handler = (_e: IpcRendererEvent, id: string) => listener(id);
+      ipcRenderer.on(IPC.toolsConfirmDismiss, handler);
+      return () => ipcRenderer.removeListener(IPC.toolsConfirmDismiss, handler);
+    },
+    reply: (id, allow) => ipcRenderer.invoke(IPC.toolsConfirmReply, id, allow),
   },
 };
 

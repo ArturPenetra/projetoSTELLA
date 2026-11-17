@@ -34,11 +34,25 @@
         >
           Memória
         </button>
+        <button
+          id="tools-open"
+          class="ghost"
+          type="button"
+          title="Ferramentas: abrir apps e ler arquivos, com sua permissão"
+          aria-controls="tools-panel"
+        >
+          Ferramentas
+        </button>
         <button id="reset" class="ghost" type="button" title="Começar uma conversa nova">
           Nova
         </button>
       </div>
     </header>
+
+    <div id="acting" class="acting" role="status" hidden>
+      <span id="acting-text"></span>
+      <span class="acting-hint">Esc cancela</span>
+    </div>
 
     <div id="banner" class="banner" role="status" hidden>
       <p id="banner-text"></p>
@@ -108,6 +122,36 @@
       aria-labelledby="onboarding-title"
       hidden
     ></section>
+
+    <section
+      id="tools-panel"
+      class="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tools-title"
+      hidden
+    ></section>
+
+    <section
+      id="confirm"
+      class="confirm-backdrop"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+      aria-describedby="confirm-action"
+      hidden
+    >
+      <div class="confirm-box">
+        <h2 id="confirm-title"></h2>
+        <p id="confirm-action" class="confirm-action"></p>
+        <p id="confirm-warning" class="confirm-warning" hidden></p>
+        <p class="hint" id="confirm-hint"></p>
+        <div class="confirm-buttons">
+          <button id="confirm-deny" type="button" class="ghost">Não permitir</button>
+          <button id="confirm-allow" type="button">Permitir</button>
+        </div>
+      </div>
+    </section>
 
     <script type="module" src="./main.ts"></script>
   </body>

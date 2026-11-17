@@ -557,3 +557,184 @@ button.forget:hover {
     animation: none;
   }
 }
+
+/* --- Ferramentas ------------------------------------------------------------------- */
+
+/* Indicador visível de que a companheira está agindo. */
+.acting {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 16px 0;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--deep);
+  color: #fff;
+  font-size: 0.85rem;
+}
+.acting[hidden] {
+  display: none;
+}
+.acting-hint {
+  opacity: 0.8;
+  font-size: 0.75rem;
+}
+
+.msg.tool-note {
+  align-self: flex-start;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid #ffffff22;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+}
+.msg.tool-note[data-decision='executado'] {
+  color: #9be0b1;
+}
+.msg.tool-note[data-decision]:not([data-decision='executado']) {
+  color: var(--danger);
+}
+
+.tools-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 0;
+}
+.tools-toggle {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.tools-toggle input {
+  margin-top: 3px;
+}
+.tools-toggle span,
+.tools-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tools-toggle small,
+.tools-item small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+.tools-section {
+  padding: 12px 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.tools-section h3 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+.tools-list,
+.tools-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tools-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 6px 10px;
+  overflow-wrap: anywhere;
+}
+.tools-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  background: transparent !important;
+}
+.tools-log li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 8px;
+  font-size: 0.78rem;
+  padding: 4px 0;
+  border-bottom: 1px solid #ffffff10;
+}
+.tools-log-when {
+  color: var(--muted);
+}
+.tools-log-decision {
+  grid-column: 2;
+  color: var(--muted);
+}
+.tools-log li[data-decision='executado'] .tools-log-decision {
+  color: #9be0b1;
+}
+#tools-panel {
+  padding-bottom: 16px;
+}
+
+/* Confirmação: por cima de tudo, com a ação por extenso. */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #000a;
+}
+.confirm-backdrop[hidden] {
+  display: none;
+}
+.confirm-box {
+  width: 100%;
+  background: var(--surface);
+  border: 2px solid var(--glow);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.confirm-box h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.confirm-action {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.confirm-warning {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #3a2620;
+  color: var(--danger);
+  font-size: 0.86rem;
+}
+.confirm-warning[hidden] {
+  display: none;
+}
+.confirm-box .hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.confirm-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

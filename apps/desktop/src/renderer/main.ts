@@ -2,6 +2,7 @@ import type { LlmStatus } from '@stella/core';
 import type { ChatEvent, SpeakerView, StellaApi } from '../shared/ipc.js';
 import { cleanIpcError, setupMemoryPanel } from './memory-panel.js';
 import { setupPersonas } from './personas-ui.js';
+import { setupTools, TOOL_ACTIVITY } from './tools-ui.js';
 
 declare global {
   interface Window {
@@ -65,7 +66,20 @@ async function refreshStatus(): Promise<void> {
   showStatus(await stella.llm.status());
 }
 
+const acting = $<HTMLElement>('acting');
+const actingText = $<HTMLElement>('acting-text');
+
+function showActing(text: string): void {
+  actingText.textContent = text;
+  acting.hidden = false;
+}
+
+function hideActing(): void {
+  acting.hidden = true;
+}
+
 function finish(): void {
+  hideActing();
   currentBubble?.classList.remove('pending');
   currentBubble = undefined;
   currentRequest = undefined;
@@ -102,6 +116,31 @@ stella.chat.onEvent((event: ChatEvent) => {
   }
   if (event.requestId !== currentRequest || !currentBubble) return;
   switch (event.type) {
+    case 'tool': {
+      // Indicador visível de que a companheira está agindo, e uma nota do que aconteceu.
+      if (event.status === 'start') {
+        showActing(TOOL_ACTIVITY[event.name] ?? 'Usando uma ferramenta…');
+        const note = document.createElement('div');
+        note.className = 'msg tool-note';
+        note.dataset['tool'] = event.name;
+        note.textContent = TOOL_ACTIVITY[event.name] ?? 'Usando uma ferramenta…';
+        currentBubble.before(note);
+      } else {
+        hideActing();
+        const note = messages.querySelector<HTMLElement>(
+          `.tool-note[data-tool="${CSS.escape(event.name)}"]:not([data-decision])`,
+        );
+        if (note) {
+          note.dataset['decision'] = event.decision ?? '';
+          note.textContent =
+            event.decision === 'executado'
+              ? `✓ ${event.summary ?? 'Feito'}`
+              : `✕ ${event.summary ?? 'Não foi feito'}`;
+        }
+      }
+      messages.scrollTop = messages.scrollHeight;
+      break;
+    }
     case 'token':
       currentBubble.textContent += event.text;
       messages.scrollTop = messages.scrollHeight;
@@ -188,6 +227,10 @@ stella.memory.onEvent((event) => {
 });
 
 void setupPersonas(stella);
+// Esc: recusa a confirmação aberta e cancela a resposta (e a ação) em andamento.
+setupTools(stella, () => {
+  if (currentRequest) void stella.chat.cancel(currentRequest);
+});
 
 void refreshStatus();
 setInterval(() => void refreshStatus(), 10_000);

@@ -26,6 +26,16 @@ export const IPC = {
   personaSignsForDate: 'persona:signs-for-date',
   personaFinishOnboarding: 'persona:finish-onboarding',
   personaChanged: 'persona:changed',
+  toolsState: 'tools:state',
+  toolsSetEnabled: 'tools:set-enabled',
+  toolsAddFolder: 'tools:add-folder',
+  toolsRemoveFolder: 'tools:remove-folder',
+  toolsAddApp: 'tools:add-app',
+  toolsRemoveApp: 'tools:remove-app',
+  toolsLog: 'tools:log',
+  toolsConfirm: 'tools:confirm',
+  toolsConfirmDismiss: 'tools:confirm-dismiss',
+  toolsConfirmReply: 'tools:confirm-reply',
   avatarState: 'avatar:state',
   avatarGet: 'avatar:get',
   companionPersona: 'companion:persona',
@@ -56,6 +66,15 @@ export type ChatEvent =
   | { requestId: string; type: 'start'; kind: 'reply' | 'handoff'; speaker: SpeakerView }
   /** Uma fala por conta própria foi substituída (trocas seguidas): some da tela. */
   | { requestId: string; type: 'retract' }
+  /** Uso de ferramenta: começo (indicador "agindo") e fim (com o que aconteceu). */
+  | {
+      requestId: string;
+      type: 'tool';
+      status: 'start' | 'end';
+      name: string;
+      summary?: string;
+      decision?: string;
+    }
   | { requestId: string; type: 'token'; text: string }
   | { requestId: string; type: 'done'; outputTokens?: number; totalMs?: number }
   | { requestId: string; type: 'error'; code: LlmErrorCode | 'internal'; message: string };
@@ -121,6 +140,35 @@ export interface FinishOnboarding {
   preference: Preference | null;
 }
 
+export interface AppView {
+  name: string;
+  path: string;
+}
+
+export interface ToolsState {
+  enabled: { open_app: boolean; read_file: boolean };
+  folders: string[];
+  apps: AppView[];
+}
+
+export interface ToolLogView {
+  at: number;
+  tool: string;
+  action: string;
+  decision: string;
+  detail: string;
+}
+
+/** Pedido de confirmação mostrado no chat, com a ação escrita por extenso. */
+export interface ConfirmPrompt {
+  id: string;
+  persona: string;
+  action: string;
+  /** Aviso de possível injeção (o pedido veio depois de ler um arquivo). */
+  warning: string | undefined;
+  timeoutMs: number;
+}
+
 export interface StellaApi {
   appName: string;
   versions: { electron: string; chrome: string; node: string };
@@ -153,6 +201,20 @@ export interface StellaApi {
     signsForDate(day: number, month: number): Promise<SignId[]>;
     finishOnboarding(choice: FinishOnboarding): Promise<void>;
     onChanged(listener: (persona: PersonaView) => void): () => void;
+  };
+  tools: {
+    state(): Promise<ToolsState>;
+    setEnabled(tool: 'open_app' | 'read_file', enabled: boolean): Promise<ToolsState>;
+    /** Abre o diálogo do sistema para escolher uma pasta (o renderer nunca manda caminhos). */
+    addFolder(): Promise<ToolsState>;
+    removeFolder(path: string): Promise<ToolsState>;
+    /** Abre o diálogo do sistema para escolher um programa (.exe). */
+    addApp(): Promise<ToolsState>;
+    removeApp(name: string): Promise<ToolsState>;
+    log(): Promise<ToolLogView[]>;
+    onConfirm(listener: (prompt: ConfirmPrompt) => void): () => void;
+    onConfirmDismiss(listener: (id: string) => void): () => void;
+    reply(id: string, allow: boolean): Promise<void>;
   };
 }
 

@@ -6,6 +6,7 @@ import {
   type LlmClient,
   type Memory,
   type Speaker,
+  type ToolHost,
 } from '@stella/core';
 import { MAX_MESSAGE_LENGTH, type ChatEvent, type SpeakerView } from '../shared/ipc.js';
 
@@ -17,6 +18,8 @@ const DEFAULT_CHAT_SPEAKER: ChatSpeaker = { ...DEFAULT_SPEAKER, element: 'ar' };
 export interface ChatControllerOptions {
   memory?: Memory | undefined;
   speaker?: ChatSpeaker | undefined;
+  /** Ferramentas com as permissões do usuário. */
+  tools?: ToolHost | undefined;
 }
 
 export interface SwitchOptions {
@@ -37,6 +40,7 @@ export class ChatController {
   private session: ChatSession;
   private speaker: ChatSpeaker;
   private readonly memory: Memory | undefined;
+  private readonly tools: ToolHost | undefined;
   private current: { id: string; abort: AbortController } | undefined;
   /** Falas por conta própria ainda sem resposta do usuário (saem da tela numa nova troca). */
   private pendingHandoffs: string[] = [];
@@ -47,6 +51,7 @@ export class ChatController {
     options: ChatControllerOptions = {},
   ) {
     this.memory = options.memory;
+    this.tools = options.tools;
     this.speaker = options.speaker ?? DEFAULT_CHAT_SPEAKER;
     this.session = this.newSession();
   }
@@ -55,7 +60,18 @@ export class ChatController {
     return new ChatSession(this.llm, {
       speaker: this.speaker,
       ...(this.memory ? { memory: this.memory } : {}),
+      ...(this.tools ? { tools: this.tools } : {}),
     });
+  }
+
+  /** Se há uma resposta (ou ação) em andamento. */
+  get busy(): boolean {
+    return this.current !== undefined;
+  }
+
+  /** Botão de pânico (Esc): cancela o que estiver em andamento, inclusive uma confirmação. */
+  cancelAll(): void {
+    this.current?.abort.abort();
   }
 
   get currentSpeaker(): ChatSpeaker {
@@ -167,7 +183,16 @@ export class ChatController {
       for await (const chunk of this.session.send(text, { signal, hidden })) {
         if (chunk.type === 'token') {
           this.emit({ requestId, type: 'token', text: chunk.text });
-        } else {
+        } else if (chunk.type === 'tool') {
+          this.emit({
+            requestId,
+            type: 'tool',
+            status: chunk.status,
+            name: chunk.name,
+            ...(chunk.summary ? { summary: chunk.summary } : {}),
+            ...(chunk.decision ? { decision: chunk.decision } : {}),
+          });
+        } else if (chunk.type === 'done') {
           this.emit({ requestId, type: 'done', ...chunk.stats });
         }
       }
