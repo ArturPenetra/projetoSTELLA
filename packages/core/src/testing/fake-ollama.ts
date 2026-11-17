@@ -15,6 +15,11 @@ export interface FakeOllamaOptions {
    * Recebe o corpo do pedido e devolve o texto da resposta. Padrão: `{"facts":[]}`.
    */
   complete?: (body: FakeChatRequest) => string;
+  /**
+   * Roteiro do /api/chat com streaming: recebe o pedido e devolve o que o "modelo" faz
+   * (texto e/ou ferramentas). `undefined` usa `reply`.
+   */
+  script?: (body: FakeChatRequest) => FakeChatStep | undefined;
   /** Vetor de um texto em /api/embed. Padrão: `bagOfWordsEmbedding`. */
   embed?: (text: string) => number[];
   /** Comportamento especial do /api/chat. */
@@ -25,7 +30,20 @@ export interface FakeChatRequest {
   model?: string;
   stream?: boolean;
   format?: unknown;
-  messages: { role: string; content: string }[];
+  /** Ferramentas oferecidas ao modelo (formato do Ollama). */
+  tools?: { function: { name: string } }[];
+  messages: {
+    role: string;
+    content: string;
+    tool_calls?: { function: { name: string; arguments: unknown } }[];
+    tool_name?: string;
+  }[];
+}
+
+/** Uma rodada roteirizada: texto em pedaços e/ou pedidos de ferramenta. */
+export interface FakeChatStep {
+  reply?: string[];
+  toolCalls?: { name: string; arguments: unknown }[];
 }
 
 export interface FakeOllama {
@@ -97,7 +115,21 @@ export async function startFakeOllama(options: FakeOllamaOptions = {}): Promise<
         return;
       }
       if (firstDelayMs) await sleep(firstDelayMs);
-      for (const piece of reply) {
+      const step = options.script?.(body);
+      if (step?.toolCalls?.length) {
+        const toolCalls = step.toolCalls.map((c) => ({
+          function: { name: c.name, arguments: c.arguments },
+        }));
+        res.write(
+          JSON.stringify({
+            message: { role: 'assistant', content: '', tool_calls: toolCalls },
+            done: false,
+          }) + '\n',
+        );
+        res.end(JSON.stringify({ message: { role: 'assistant', content: '' }, done: true }) + '\n');
+        return;
+      }
+      for (const piece of step?.reply ?? reply) {
         if (res.destroyed) return;
         res.write(
           JSON.stringify({ message: { role: 'assistant', content: piece }, done: false }) + '\n',

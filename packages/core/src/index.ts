@@ -102,3 +102,45 @@ export {
   signTalkNote,
   withArticle,
 } from './personas/prompt.js';
+
+export type { ToolCall, ToolSpec } from './llm/types.js';
+export { NO_TOOL_USED_NOTE, TOOL_RESULTS_NOTE } from './chat/session.js';
+export { IntentRouter, looksLikeFile } from './tools/router.js';
+export {
+  appEntrySchema,
+  ToolRefusal,
+  toolSettingsSchema,
+  toolSpec,
+  type AppEntry,
+  type Tool,
+  type ToolContext,
+  type ToolName,
+  type ToolResult,
+  type ToolRisk,
+  type ToolSettings,
+} from './tools/types.js';
+export {
+  notDone,
+  refusalReply,
+  ToolRunner,
+  type ConfirmRequest,
+  type ToolDecision,
+  type ToolHost,
+  type ToolLogEntry,
+  type ToolOutcome,
+  type ToolRunnerOptions,
+} from './tools/runner.js';
+export {
+  createReadFileTool,
+  isInside,
+  MAX_READ_BYTES,
+  TEXT_EXTENSIONS,
+  type ReadFileOptions,
+} from './tools/read-file.js';
+export {
+  createOpenAppTool,
+  defaultLauncher,
+  findApp,
+  normalizeAppName,
+  type Launcher,
+} from './tools/open-app.js';

@@ -1,12 +1,40 @@
-export type ChatRole = 'system' | 'user' | 'assistant';
+export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
+
+/** Pedido do modelo para usar uma ferramenta (os argumentos ainda não foram validados). */
+export interface ToolCall {
+  name: string;
+  arguments: unknown;
+}
 
 export interface ChatMessage {
   role: ChatRole;
   content: string;
+  /** Na fala do assistente: as ferramentas que ele pediu. */
+  toolCalls?: ToolCall[];
+  /** Na mensagem `tool`: qual ferramenta respondeu. */
+  toolName?: string;
+}
+
+/** Ferramenta oferecida ao modelo (formato de função com esquema JSON, como o Ollama espera). */
+export interface ToolSpec {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
 }
 
 /** Um pedaço da resposta em streaming. */
-export type ChatChunk = { type: 'token'; text: string } | { type: 'done'; stats: ChatStats };
+export type ChatChunk =
+  | { type: 'token'; text: string }
+  | { type: 'tool_calls'; calls: ToolCall[] }
+  /** Uso de ferramenta pela sessão (para o indicador "agindo" na tela). */
+  | {
+      type: 'tool';
+      status: 'start' | 'end';
+      name: string;
+      summary?: string;
+      decision?: string;
+    }
+  | { type: 'done'; stats: ChatStats };
 
 export interface ChatStats {
   /** Tokens gerados na resposta. */
@@ -17,6 +45,8 @@ export interface ChatStats {
 
 export interface ChatOptions {
   signal?: AbortSignal;
+  /** Ferramentas que o modelo pode pedir nesta resposta (só as que o usuário ligou). */
+  tools?: ToolSpec[];
 }
 
 export type LlmStatus =

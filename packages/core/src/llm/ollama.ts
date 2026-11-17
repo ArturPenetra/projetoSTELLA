@@ -17,7 +17,14 @@ import type {
 const STATUS_TIMEOUT_MS = 3000;
 
 const chatLineSchema = z.object({
-  message: z.object({ content: z.string().optional() }).optional(),
+  message: z
+    .object({
+      content: z.string().optional(),
+      tool_calls: z
+        .array(z.object({ function: z.object({ name: z.string(), arguments: z.unknown() }) }))
+        .optional(),
+    })
+    .optional(),
   done: z.boolean().optional(),
   error: z.string().optional(),
   eval_count: z.number().optional(),
@@ -87,9 +94,17 @@ export class OllamaClient implements LlmClient, Completer, Embedder {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           model: this.model,
-          messages,
+          messages: messages.map(toOllamaMessage),
           stream: true,
           think: this.options.think ?? false,
+          ...(options.tools?.length
+            ? {
+                tools: options.tools.map((t) => ({
+                  type: 'function',
+                  function: { name: t.name, description: t.description, parameters: t.parameters },
+                })),
+              }
+            : {}),
           options: {
             temperature: this.options.temperature ?? 0.8,
             num_ctx: this.options.contextSize ?? 8192,
@@ -116,6 +131,13 @@ export class OllamaClient implements LlmClient, Completer, Embedder {
         if (line.error) throw new LlmError('http', `Erro do Ollama: ${line.error}`);
         const text = line.message?.content;
         if (text) yield { type: 'token', text };
+        const calls = line.message?.tool_calls;
+        if (calls?.length) {
+          yield {
+            type: 'tool_calls',
+            calls: calls.map((c) => ({ name: c.function.name, arguments: c.function.arguments })),
+          };
+        }
         if (line.done) {
           yield {
             type: 'done',
@@ -148,7 +170,7 @@ export class OllamaClient implements LlmClient, Completer, Embedder {
       '/api/chat',
       {
         model: this.model,
-        messages,
+        messages: messages.map(toOllamaMessage),
         stream: false,
         think: false,
         ...(options.format ? { format: options.format } : {}),
@@ -226,4 +248,20 @@ export class OllamaClient implements LlmClient, Completer, Embedder {
 export function sameModel(installed: string, wanted: string): boolean {
   const norm = (name: string) => (name.includes(':') ? name : `${name}:latest`);
   return norm(installed) === norm(wanted);
+}
+
+/** Mensagem no formato do Ollama (`tool_calls` e `tool_name`). */
+function toOllamaMessage(m: ChatMessage): Record<string, unknown> {
+  return {
+    role: m.role,
+    content: m.content,
+    ...(m.toolCalls?.length
+      ? {
+          tool_calls: m.toolCalls.map((c) => ({
+            function: { name: c.name, arguments: c.arguments },
+          })),
+        }
+      : {}),
+    ...(m.toolName ? { tool_name: m.toolName } : {}),
+  };
 }
