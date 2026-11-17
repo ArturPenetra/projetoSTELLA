@@ -14,8 +14,13 @@ export default defineConfig({
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {
+      // Preload em sandbox não pode dar require() em pedaços compartilhados: cada um sai inteiro.
+      isolatedEntries: true,
       rollupOptions: {
-        input: { index: resolve(here, 'src/preload/index.ts') },
+        input: {
+          chat: resolve(here, 'src/preload/chat.ts'),
+          companion: resolve(here, 'src/preload/companion.ts'),
+        },
         output: { format: 'cjs', entryFileNames: '[name].cjs' },
       },
     },
@@ -23,7 +28,12 @@ export default defineConfig({
   renderer: {
     root: resolve(here, 'src/renderer'),
     build: {
-      rollupOptions: { input: { index: resolve(here, 'src/renderer/index.html') } },
+      rollupOptions: {
+        input: {
+          index: resolve(here, 'src/renderer/index.html'),
+          companion: resolve(here, 'src/renderer/companion.html'),
+        },
+      },
     },
   },
 });

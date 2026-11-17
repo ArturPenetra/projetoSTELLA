@@ -1,0 +1,222 @@
+/* Janela transparente: só o avatar e o balão aparecem. */
+:root {
+  font-family: system-ui, 'Segoe UI', sans-serif;
+  --tinta: #2b2233;
+  --papel: #fffdf8;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* --- Balão de fala ------------------------------------------------------------------- */
+
+.bubble {
+  position: relative;
+  box-sizing: border-box;
+  width: calc(100% - 16px);
+  margin-bottom: 14px;
+  padding: 10px 14px 12px;
+  border-radius: 16px;
+  background: var(--papel);
+  color: var(--tinta);
+  box-shadow: 0 4px 14px #0003;
+  border: 2px solid var(--profunda, #1b3f80);
+  cursor: pointer;
+  animation: surgir 180ms ease-out;
+}
+.bubble[hidden] {
+  display: none;
+}
+/* Rabinho apontando para o avatar. */
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--papel);
+  border-right: 2px solid var(--profunda, #1b3f80);
+  border-bottom: 2px solid var(--profunda, #1b3f80);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.bubble-name {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--profunda, #1b3f80);
+  margin-bottom: 2px;
+}
+
+.bubble-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.typing {
+  display: none;
+  gap: 4px;
+  padding: 4px 0;
+}
+.typing i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--profunda, #1b3f80);
+  animation: ponto 1s ease-in-out infinite;
+}
+.typing i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.bubble.is-typing .typing {
+  display: flex;
+}
+.bubble.is-typing .bubble-text {
+  display: none;
+}
+
+/* --- Avatar -------------------------------------------------------------------------- */
+
+.avatar {
+  width: 200px;
+  height: 260px;
+  flex: none;
+  cursor: grab;
+}
+.avatar.dragging {
+  cursor: grabbing;
+}
+
+.avatar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 50% 100%;
+  /* Só o desenho recebe o mouse; o resto da janela deixa os cliques passarem. */
+  pointer-events: none;
+}
+.avatar svg * {
+  pointer-events: visiblePainted;
+}
+.avatar svg .enfeite,
+.avatar svg .enfeite * {
+  pointer-events: none;
+}
+
+.avatar #olhos {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 300ms ease;
+}
+
+/* parado: respira devagar e pisca de vez em quando */
+.avatar[data-mood='parado'] svg {
+  animation: respirar 4s ease-in-out infinite;
+}
+.avatar[data-mood='parado'] #olhos {
+  animation: piscar 5s infinite;
+}
+
+/* pensando: inclina a cabeça e olha para cima */
+.avatar[data-mood='pensando'] svg {
+  animation: pensar 2.4s ease-in-out infinite;
+}
+.avatar[data-mood='pensando'] #olhos {
+  transform: translate(6px, -7px);
+}
+
+/* falando: balança de leve (a boca é animada pelo script) */
+.avatar[data-mood='falando'] svg {
+  animation: respirar 1.2s ease-in-out infinite;
+}
+
+/* feliz: dá dois pulinhos com os olhos sorrindo */
+.avatar[data-mood='feliz'] svg {
+  animation: pular 0.5s ease-out 2;
+}
+
+@keyframes respirar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes piscar {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes pensar {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(-1deg) translateY(-3px);
+  }
+}
+@keyframes pular {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  30% {
+    transform: translateY(-14px) scale(0.98, 1.02);
+  }
+  60% {
+    transform: translateY(0) scale(1.02, 0.98);
+  }
+}
+@keyframes ponto {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar svg,
+  .avatar #olhos,
+  .typing i,
+  .bubble {
+    animation: none !important;
+  }
+}

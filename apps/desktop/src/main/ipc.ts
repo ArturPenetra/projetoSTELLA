@@ -1,40 +1,54 @@
-import { ipcMain, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
-import type { LlmClient } from '@stella/core';
+import { ipcMain, type BrowserWindow } from 'electron';
+import type { AvatarDirector, LlmClient } from '@stella/core';
 import { IPC, type ChatEvent } from '../shared/ipc.js';
 import { ChatController } from './chat-controller.js';
+import { assertSender } from './ipc-guard.js';
 
-/** Só a página do próprio app pode chamar o processo principal. */
-function assertTrustedSender(event: IpcMainInvokeEvent, win: BrowserWindow): void {
-  if (event.sender.id !== win.webContents.id) {
-    throw new Error('Chamada IPC de origem desconhecida.');
+/** Repassa cada evento do chat ao avatar, que decide o próprio estado. */
+export function feedAvatar(director: AvatarDirector, event: ChatEvent): void {
+  switch (event.type) {
+    case 'token':
+      director.token(event.text);
+      break;
+    case 'done':
+      director.done();
+      break;
+    case 'error':
+      if (event.code === 'aborted') director.cancelled();
+      else director.failed(event.message);
+      break;
   }
-  const url = event.senderFrame?.url ?? '';
-  const devUrl = process.env['ELECTRON_RENDERER_URL'];
-  const trusted = url.startsWith('file://') || (devUrl !== undefined && url.startsWith(devUrl));
-  if (!trusted) throw new Error('Chamada IPC de origem desconhecida.');
 }
 
-export function registerIpc(win: BrowserWindow, llm: LlmClient): ChatController {
+export function registerChatIpc(
+  win: BrowserWindow,
+  llm: LlmClient,
+  director: AvatarDirector,
+): ChatController {
   const emit = (event: ChatEvent) => {
     if (!win.isDestroyed()) win.webContents.send(IPC.chatEvent, event);
+    feedAvatar(director, event);
   };
   const chat = new ChatController(llm, emit);
 
   ipcMain.handle(IPC.llmStatus, (event) => {
-    assertTrustedSender(event, win);
+    assertSender(event, win);
     return llm.status();
   });
   ipcMain.handle(IPC.chatSend, (event, text: unknown) => {
-    assertTrustedSender(event, win);
-    return chat.send(text);
+    assertSender(event, win);
+    const result = chat.send(text);
+    director.userSent();
+    return result;
   });
   ipcMain.handle(IPC.chatCancel, (event, requestId: unknown) => {
-    assertTrustedSender(event, win);
+    assertSender(event, win);
     chat.cancel(requestId);
   });
   ipcMain.handle(IPC.chatReset, (event) => {
-    assertTrustedSender(event, win);
+    assertSender(event, win);
     chat.reset();
+    director.cancelled();
   });
 
   return chat;

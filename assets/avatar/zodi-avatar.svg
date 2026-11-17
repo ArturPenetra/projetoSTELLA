@@ -4,6 +4,8 @@
     Troque só o atributo data-element: fogo | terra | ar | agua.
     Todas as cores do elemento vêm das variáveis abaixo; a forma nunca muda.
     Boca: a classe "falando" no <svg> mostra a boca aberta (para sincronia com o áudio).
+    Olhos: a classe "feliz" no <svg> troca os olhos abertos pelos olhos sorrindo (^ ^).
+    Aura e brilhos têm a classe "enfeite": o app não conta cliques neles.
   -->
   <style>
     svg { --primaria:#2F7BEA; --secundaria:#B8C4D6; --profunda:#1B3F80; --brilho:#A9D1FF; }
@@ -20,16 +22,19 @@
     .boca-aberta { display: none; }
     svg.falando .boca-aberta  { display: inline; }
     svg.falando .boca-fechada { display: none; }
+    .olhos-felizes { display: none; }
+    svg.feliz #olhos { display: none; }
+    svg.feliz .olhos-felizes { display: inline; }
   </style>
   <defs>
     <polygon id="estrela" points="0,-16 4.11,-5.66 15.22,-4.94 6.66,2.16 9.4,12.94 0,7 -9.4,12.94 -6.66,2.16 -15.22,-4.94 -4.11,-5.66"/>
   </defs>
 
   <!-- aura -->
-  <circle class="brilho" cx="200" cy="235" r="180" opacity="0.28"/>
+  <circle class="brilho enfeite" cx="200" cy="235" r="180" opacity="0.28"/>
 
   <!-- brilhos ao redor -->
-  <g class="secundaria" opacity="0.85">
+  <g class="secundaria enfeite" opacity="0.85">
     <use xlink:href="#estrela" href="#estrela" transform="translate(62 118) scale(0.6)"/>
     <use xlink:href="#estrela" href="#estrela" transform="translate(344 92) scale(0.5)"/>
     <use xlink:href="#estrela" href="#estrela" transform="translate(348 300) scale(0.45)"/>
@@ -90,6 +95,11 @@
     <circle cx="244" cy="196" r="5" fill="#FFFFFF"/>
     <circle cx="233" cy="212" r="2.5" fill="#FFFFFF"/>
     <path class="contorno" d="M216 192 Q238 170 260 192"/>
+  </g>
+
+  <g class="olhos-felizes">
+    <path class="contorno" d="M142 210 Q162 186 182 210"/>
+    <path class="contorno" d="M218 210 Q238 186 258 210"/>
   </g>
 
   <!-- bochechas -->
