@@ -18,7 +18,10 @@ Companheira de IA para desktop (Windows) que roda **100% local**: avatar animado
 
 - TypeScript estrito (`tsconfig.base.json`). Validação de dados externos e de configuração com `zod`.
 - `packages/core` (`@stella/core`) **não depende do Electron**. Toda a lógica de IA fica nele e é testada sozinha.
-- `apps/desktop` (`@stella/desktop`) contém a janela, a bandeja, o IPC e o ciclo de vida do Ollama.
+- `apps/desktop` (`@stella/desktop`) contém as janelas, a bandeja, o IPC e o ciclo de vida do Ollama.
+- Duas janelas, cada uma com o próprio preload e só a própria API: **companheira** (`companion.html`, `window.companion`: avatar transparente, sempre no topo, `focusable: false` para nunca roubar o foco, cliques atravessam fora do desenho) e **chat** (`index.html`, `window.stella`; fechar só esconde). O processo principal confere a janela de origem de cada canal (`ipc-guard.ts`).
+- O estado do avatar (parado, pensando, falando, feliz) e o balão são decididos por `AvatarDirector` em `@stella/core`, alimentado pelos eventos do chat.
+- Preloads rodam em sandbox e não podem dar `require` em arquivos vizinhos: o build usa `isolatedEntries` para cada preload sair num arquivo só.
 - Testes obrigatórios para toda lógica nova. Arquivos de teste ficam ao lado do código: `*.test.ts`.
 - Textos de interface e mensagens de commit em **pt-BR**.
 
@@ -33,6 +36,8 @@ npm run lint           # ESLint
 npm run format         # Prettier
 npm run check:native   # confere better-sqlite3 + sqlite-vec dentro do Electron
 npm run check          # tudo acima
+npm run test:e2e       # build + testes de ponta a ponta (Playwright + Electron)
+npm run icons -w @stella/desktop   # regera os ícones da bandeja a partir do SVG do avatar
 ```
 
 ## Repositório

@@ -4,7 +4,7 @@
 
 A Stella é uma companheira de IA para desktop que roda **100% no seu computador**. Ela aparece como um avatar animado na tela, conversa por texto e voz e lembra do que você contou. São 12 personas inspiradas nos signos do Zodíaco, e 4 delas estão ativas no lançamento: Leo, Corni, Aqua e Pixi. Nada sai da sua máquina: sem nuvem, sem chave de API, sem telemetria.
 
-> Em desenvolvimento. Fase atual: **2 — Chat com LLM local** (concluída).
+> Em desenvolvimento. Fase atual: **3 — Avatar e janela de companheira** (concluída).
 
 ## Requisitos
 
@@ -28,6 +28,14 @@ npm run models:pull
 ```bash
 npm run dev
 ```
+
+## Como usar
+
+- A Stella aparece no canto inferior direito da tela, sempre por cima das outras janelas, sem tirar o foco do que você está fazendo.
+- **Clique nela** (ou no ícone da bandeja) para abrir o chat. **Arraste** para mudar de lugar; a posição fica salva.
+- **Clique direito** nela ou no ícone da bandeja: abrir o chat, esconder/mostrar a Stella e sair.
+- Fechar o chat só esconde a janela; para sair de vez, use **Sair** no menu.
+- Enquanto responde, ela pensa, fala e fica feliz quando termina; o balão mostra o começo da resposta.
 
 ## Estrutura
 
