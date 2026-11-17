@@ -36,9 +36,13 @@ async function windowFor(app: ElectronApplication, page: string): Promise<Page> 
 export async function launch(
   ollamaUrl: string,
   files: Record<string, unknown> = {},
-  options: { dir?: string } = {},
+  options: { dir?: string; onboarded?: boolean } = {},
 ): Promise<Launched> {
   const dir = options.dir ?? (await mkdtemp(join(tmpdir(), 'stella-e2e-')));
+  // Pasta nova: por padrão, onboarding já feito e com a Aqua (paleta "ar").
+  if (!options.dir && options.onboarded !== false && !('profile.json' in files)) {
+    files = { 'profile.json': { onboarded: true, personaId: 'aqua' }, ...files };
+  }
   await writeFile(
     join(dir, 'config.json'),
     JSON.stringify({ llm: { baseUrl: ollamaUrl, model: 'qwen3.5:2b' } }),

@@ -64,8 +64,8 @@ test('cumprimenta ao abrir e fica no topo, transparente e sem foco', async () =>
   const { companion, app } = stella;
 
   await expect(companion.locator('#bubble')).toBeVisible();
-  await expect(companion.locator('#bubble-name')).toHaveText('Stella');
-  await expect(companion.locator('#bubble-text')).toContainText('Clique em mim');
+  await expect(companion.locator('#bubble-name')).toHaveText('Aqua');
+  await expect(companion.locator('#bubble-text')).toContainText('Tive uma ideia meio maluca');
 
   await expect.poll(async () => (await companionWindow(app)).visible).toBe(true);
   const win = await companionWindow(app);

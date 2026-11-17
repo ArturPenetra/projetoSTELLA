@@ -62,7 +62,7 @@ test('com o Ollama desligado, avisa sem travar', async () => {
   await expect(page.locator('#send')).toHaveText('Enviar');
   await page.screenshot({ path: 'test-results/ollama-desligado.png' });
 
-  // Continua respondendo: o botão Nova conversa limpa a tela.
+  // Continua respondendo: o botão Nova limpa a tela.
   await page.locator('#reset').click();
   await expect(page.locator('.msg')).toHaveCount(0);
 });
@@ -82,7 +82,7 @@ test('as janelas não têm acesso ao Node e cada uma só vê a própria API', as
   expect(await stella.chat.evaluate(inspect)).toEqual({
     require: 'undefined',
     process: 'undefined',
-    stella: ['appName', 'chat', 'llm', 'memory', 'versions'],
+    stella: ['appName', 'chat', 'llm', 'memory', 'personas', 'versions'],
     companion: null,
   });
   expect(await stella.companion.evaluate(inspect)).toEqual({
@@ -95,6 +95,7 @@ test('as janelas não têm acesso ao Node e cada uma só vê a própria API', as
       'dragStart',
       'openChat',
       'openMenu',
+      'onPersona',
       'onState',
       'setInteractive',
     ].sort(),
