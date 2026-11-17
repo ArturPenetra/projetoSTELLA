@@ -6,11 +6,13 @@ export {
   appConfigSchema,
   ConfigError,
   DEFAULT_CHAT_MODEL,
+  DEFAULT_EMBEDDING_MODEL,
   DEFAULT_OLLAMA_URL,
   defaultConfig,
   parseConfig,
   type AppConfig,
   type LlmConfig,
+  type MemoryConfig,
 } from './config/schema.js';
 
 export type {
@@ -36,3 +38,18 @@ export {
   type AvatarSnapshot,
   type AvatarTimings,
 } from './avatar/director.js';
+
+export type { CompleteOptions, Completer, Embedder } from './llm/types.js';
+export {
+  FactExtractor,
+  parseFacts,
+  type ExchangeToExtract,
+  type ExtractedFact,
+} from './memory/extractor.js';
+export {
+  formatMemoryPrompt,
+  Memory,
+  type ConversationMemory,
+  type MemoryOptions,
+} from './memory/memory.js';
+export { MemoryStore, type Fact, type FactMatch, type NewFact } from './memory/store.js';
