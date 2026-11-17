@@ -1,6 +1,7 @@
 import type { LlmStatus } from '@stella/core';
-import type { ChatEvent, StellaApi } from '../shared/ipc.js';
+import type { ChatEvent, SpeakerView, StellaApi } from '../shared/ipc.js';
 import { cleanIpcError, setupMemoryPanel } from './memory-panel.js';
+import { setupPersonas } from './personas-ui.js';
 
 declare global {
   interface Window {
@@ -72,7 +73,26 @@ function finish(): void {
   input.focus();
 }
 
+/** Nome de quem respondeu, acima da fala (personas do mesmo elemento têm a mesma cor). */
+function labelBubble(bubble: HTMLElement, speaker: SpeakerView): void {
+  bubble.dataset['speaker'] = speaker.name;
+  bubble.dataset['element'] = speaker.element;
+}
+
 stella.chat.onEvent((event: ChatEvent) => {
+  if (event.type === 'start') {
+    // Resposta ao usuário: usa o balão que já está esperando. Fala por conta própria da
+    // persona (cumprimento, troca): abre um balão novo.
+    if (currentRequest && currentRequest !== event.requestId) return;
+    if (!currentBubble) {
+      currentBubble = addBubble('assistant', '');
+      currentBubble.classList.add('pending');
+      setBusy(true);
+    }
+    currentRequest = event.requestId;
+    labelBubble(currentBubble, event.speaker);
+    return;
+  }
   if (event.requestId !== currentRequest || !currentBubble) return;
   switch (event.type) {
     case 'token':
@@ -102,7 +122,8 @@ async function send(): Promise<void> {
   setBusy(true);
   try {
     const { requestId } = await stella.chat.send(text);
-    currentRequest = requestId;
+    // A resposta pode ter chegado inteira antes desta linha; só marca se ainda estiver esperando.
+    if (currentBubble === bubble) currentRequest = requestId;
   } catch (err) {
     bubble.remove();
     addBubble('error', cleanIpcError(err));
@@ -146,12 +167,14 @@ stella.memory.onEvent((event) => {
     note.type = 'button';
     note.className = 'msg note';
     note.textContent = `Guardei na memória: ${fact.text}`;
-    note.title = 'Ver ou apagar o que a Stella lembra';
+    note.title = 'Ver ou apagar o que fica guardado na memória';
     note.addEventListener('click', () => memoryPanel.open());
     messages.append(note);
   }
   messages.scrollTop = messages.scrollHeight;
 });
+
+void setupPersonas(stella);
 
 void refreshStatus();
 setInterval(() => void refreshStatus(), 10_000);

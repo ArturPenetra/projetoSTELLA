@@ -1,6 +1,30 @@
 import { randomUUID } from 'node:crypto';
-import { ChatSession, LlmError, type LlmClient, type Memory } from '@stella/core';
-import { MAX_MESSAGE_LENGTH, type ChatEvent } from '../shared/ipc.js';
+import {
+  ChatSession,
+  DEFAULT_SPEAKER,
+  LlmError,
+  type LlmClient,
+  type Memory,
+  type Speaker,
+} from '@stella/core';
+import { MAX_MESSAGE_LENGTH, type ChatEvent, type SpeakerView } from '../shared/ipc.js';
+
+/** Persona que responde, com o elemento (para a cor no chat). */
+export type ChatSpeaker = Speaker & Pick<SpeakerView, 'element'>;
+
+const DEFAULT_CHAT_SPEAKER: ChatSpeaker = { ...DEFAULT_SPEAKER, element: 'ar' };
+
+export interface ChatControllerOptions {
+  memory?: Memory | undefined;
+  speaker?: ChatSpeaker | undefined;
+}
+
+export interface SwitchOptions {
+  /** Instrução oculta para a nova persona retomar a conversa (usada se já houver histórico). */
+  handoff?: string;
+  /** O que a persona diz quando ainda não há conversa. */
+  greeting?: string;
+}
 
 /**
  * Liga a sessão de chat aos eventos enviados ao renderer.
@@ -8,18 +32,38 @@ import { MAX_MESSAGE_LENGTH, type ChatEvent } from '../shared/ipc.js';
  */
 export class ChatController {
   private session: ChatSession;
+  private speaker: ChatSpeaker;
+  private readonly memory: Memory | undefined;
   private current: { id: string; abort: AbortController } | undefined;
 
   constructor(
     private readonly llm: LlmClient,
     private readonly emit: (event: ChatEvent) => void,
-    private readonly memory?: Memory,
+    options: ChatControllerOptions = {},
   ) {
+    this.memory = options.memory;
+    this.speaker = options.speaker ?? DEFAULT_CHAT_SPEAKER;
     this.session = this.newSession();
   }
 
   private newSession(): ChatSession {
-    return new ChatSession(this.llm, this.memory ? { memory: this.memory } : {});
+    return new ChatSession(this.llm, {
+      speaker: this.speaker,
+      ...(this.memory ? { memory: this.memory } : {}),
+    });
+  }
+
+  get currentSpeaker(): ChatSpeaker {
+    return this.speaker;
+  }
+
+  /** Se a conversa atual já tem alguma fala. */
+  get hasHistory(): boolean {
+    return this.session.messages.length > 0;
+  }
+
+  private speakerView(): SpeakerView {
+    return { id: this.speaker.id, name: this.speaker.name, element: this.speaker.element };
   }
 
   send(text: unknown): { requestId: string } {
@@ -32,12 +76,45 @@ export class ChatController {
     if (this.current) {
       throw new Error('Espere a resposta atual terminar ou cancele-a.');
     }
+    return { requestId: this.start(text, false) };
+  }
 
+  private start(text: string, hidden: boolean): string {
     const requestId = randomUUID();
     const abort = new AbortController();
     this.current = { id: requestId, abort };
-    void this.run(requestId, text, abort.signal);
-    return { requestId };
+    this.emit({ requestId, type: 'start', speaker: this.speakerView() });
+    void this.run(requestId, text, hidden, abort.signal);
+    return requestId;
+  }
+
+  /**
+   * Troca a persona. Com conversa em andamento, a nova cumprimenta e retoma o assunto
+   * (instrução oculta); sem conversa, diz o cumprimento dela. Uma resposta em andamento
+   * é cancelada antes.
+   */
+  async switchTo(speaker: ChatSpeaker, options: SwitchOptions = {}): Promise<void> {
+    if (this.current) {
+      this.current.abort.abort();
+      await this.idle();
+    }
+    this.speaker = speaker;
+    this.session.setSpeaker(speaker);
+
+    if (this.hasHistory && options.handoff) {
+      this.start(options.handoff, true);
+      return;
+    }
+    if (options.greeting) this.sayNow(options.greeting);
+  }
+
+  /** Fala pronta (sem o modelo), mostrada como uma resposta normal. */
+  sayNow(text: string): void {
+    const requestId = randomUUID();
+    this.session.say(text);
+    this.emit({ requestId, type: 'start', speaker: this.speakerView() });
+    this.emit({ requestId, type: 'token', text });
+    this.emit({ requestId, type: 'done' });
   }
 
   cancel(requestId: unknown): void {
@@ -55,9 +132,14 @@ export class ChatController {
     while (this.current) await new Promise((r) => setTimeout(r, 5));
   }
 
-  private async run(requestId: string, text: string, signal: AbortSignal): Promise<void> {
+  private async run(
+    requestId: string,
+    text: string,
+    hidden: boolean,
+    signal: AbortSignal,
+  ): Promise<void> {
     try {
-      for await (const chunk of this.session.send(text, signal)) {
+      for await (const chunk of this.session.send(text, { signal, hidden })) {
         if (chunk.type === 'token') {
           this.emit({ requestId, type: 'token', text: chunk.text });
         } else {

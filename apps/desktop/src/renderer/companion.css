@@ -34,6 +34,7 @@ body {
   color: var(--tinta);
   box-shadow: 0 4px 14px #0003;
   border: 2px solid var(--profunda, #1b3f80);
+  transition: border-color 300ms ease;
   cursor: pointer;
   animation: surgir 180ms ease-out;
 }
@@ -116,6 +117,10 @@ body {
 }
 .avatar svg * {
   pointer-events: visiblePainted;
+  /* Troca de persona: a paleta muda suavemente. */
+  transition:
+    fill 300ms ease,
+    stroke 300ms ease;
 }
 .avatar svg .enfeite,
 .avatar svg .enfeite * {

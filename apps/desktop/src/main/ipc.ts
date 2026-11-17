@@ -1,12 +1,15 @@
 import { ipcMain, type BrowserWindow } from 'electron';
-import type { AvatarDirector, LlmClient, Memory } from '@stella/core';
+import type { AvatarDirector, LlmClient } from '@stella/core';
 import { IPC, type ChatEvent } from '../shared/ipc.js';
-import { ChatController } from './chat-controller.js';
+import { ChatController, type ChatControllerOptions } from './chat-controller.js';
 import { assertSender } from './ipc-guard.js';
 
 /** Repassa cada evento do chat ao avatar, que decide o próprio estado. */
 export function feedAvatar(director: AvatarDirector, event: ChatEvent): void {
   switch (event.type) {
+    case 'start':
+      director.userSent();
+      break;
     case 'token':
       director.token(event.text);
       break;
@@ -24,13 +27,13 @@ export function registerChatIpc(
   win: BrowserWindow,
   llm: LlmClient,
   director: AvatarDirector,
-  memory?: Memory,
+  options: ChatControllerOptions = {},
 ): ChatController {
   const emit = (event: ChatEvent) => {
     if (!win.isDestroyed()) win.webContents.send(IPC.chatEvent, event);
     feedAvatar(director, event);
   };
-  const chat = new ChatController(llm, emit, memory);
+  const chat = new ChatController(llm, emit, options);
 
   ipcMain.handle(IPC.llmStatus, (event) => {
     assertSender(event, win);
@@ -38,9 +41,7 @@ export function registerChatIpc(
   });
   ipcMain.handle(IPC.chatSend, (event, text: unknown) => {
     assertSender(event, win);
-    const result = chat.send(text);
-    director.userSent();
-    return result;
+    return chat.send(text);
   });
   ipcMain.handle(IPC.chatCancel, (event, requestId: unknown) => {
     assertSender(event, win);

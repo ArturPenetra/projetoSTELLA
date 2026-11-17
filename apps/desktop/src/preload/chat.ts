@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type ChatEvent, type MemoryEvent, type StellaApi } from '../shared/ipc.js';
+import {
+  IPC,
+  type ChatEvent,
+  type MemoryEvent,
+  type PersonaView,
+  type StellaApi,
+} from '../shared/ipc.js';
 
 /** API mínima exposta ao renderer. Tudo passa pelo processo principal. */
 const api: StellaApi = {
@@ -32,6 +38,18 @@ const api: StellaApi = {
       const handler = (_e: IpcRendererEvent, event: MemoryEvent) => listener(event);
       ipcRenderer.on(IPC.memoryEvent, handler);
       return () => ipcRenderer.removeListener(IPC.memoryEvent, handler);
+    },
+  },
+  personas: {
+    state: () => ipcRenderer.invoke(IPC.personaState),
+    select: (id) => ipcRenderer.invoke(IPC.personaSelect, id),
+    suggest: (sign, preference) => ipcRenderer.invoke(IPC.personaSuggest, sign, preference),
+    signsForDate: (day, month) => ipcRenderer.invoke(IPC.personaSignsForDate, day, month),
+    finishOnboarding: (choice) => ipcRenderer.invoke(IPC.personaFinishOnboarding, choice),
+    onChanged: (listener) => {
+      const handler = (_e: IpcRendererEvent, persona: PersonaView) => listener(persona);
+      ipcRenderer.on(IPC.personaChanged, handler);
+      return () => ipcRenderer.removeListener(IPC.personaChanged, handler);
     },
   },
 };

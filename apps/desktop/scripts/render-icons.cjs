@@ -12,21 +12,27 @@ const outDir = join(root, 'resources');
 const FACE_VIEWBOX = '58 56 284 284';
 // Desenha grande uma vez e reduz: fica mais nítido que desenhar em 16 px.
 const RENDER_SIZE = 128;
-const OUTPUTS = [
-  ['tray.png', 16],
-  ['tray@2x.png', 32],
+const ELEMENTS = ['fogo', 'terra', 'ar', 'agua'];
+const SIZES = [
+  ['', 16],
+  ['@2x', 32],
 ];
 
 app.disableHardwareAcceleration();
 
-async function render() {
-  const svg = readFileSync(svgPath, 'utf8')
+/** Desenha os 4 rostos lado a lado numa página só e devolve a imagem inteira. */
+async function renderStrip() {
+  const base = readFileSync(svgPath, 'utf8')
     .replace(/viewBox="[^"]*"/, `viewBox="${FACE_VIEWBOX}"`)
     .replace('<svg ', `<svg width="${RENDER_SIZE}" height="${RENDER_SIZE}" `);
-  const html = `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:transparent;overflow:hidden">${svg}</body></html>`;
+  const faces = ELEMENTS.map((el) =>
+    base.replace(/data-element="[^"]*"/, `data-element="${el}"`),
+  ).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>svg{display:block;float:left}</style></head><body style="margin:0;background:transparent;overflow:hidden">${faces}</body></html>`;
 
+  const width = RENDER_SIZE * ELEMENTS.length;
   const win = new BrowserWindow({
-    width: RENDER_SIZE,
+    width,
     height: RENDER_SIZE,
     show: false,
     frame: false,
@@ -35,7 +41,7 @@ async function render() {
     webPreferences: { offscreen: true },
   });
   const dir = mkdtempSync(join(tmpdir(), 'stella-icons-'));
-  const page = join(dir, 'icon.html');
+  const page = join(dir, 'icons.html');
   writeFileSync(page, html, 'utf8');
   await win.loadFile(page);
   rmSync(dir, { recursive: true, force: true });
@@ -48,7 +54,7 @@ async function render() {
       const colors = new Set();
       const bitmap = frame.toBitmap();
       for (let i = 0; i < bitmap.length; i += 4 * 97) colors.add(bitmap.readUInt32LE(i));
-      if (colors.size < 8) return;
+      if (colors.size < 16 || frame.getSize().width < width) return;
       clearTimeout(timer);
       resolve(frame);
     });
@@ -56,12 +62,22 @@ async function render() {
     win.webContents.invalidate();
   });
   win.destroy();
+  return image;
+}
 
-  for (const [name, size] of OUTPUTS) {
-    const png = image.resize({ width: size, height: size, quality: 'best' }).toPNG();
-    writeFileSync(join(outDir, name), png);
-    console.log(`${name}: ${size}x${size}`);
-  }
+async function render() {
+  const strip = await renderStrip();
+  ELEMENTS.forEach((element, i) => {
+    const face = strip.crop({ x: i * RENDER_SIZE, y: 0, width: RENDER_SIZE, height: RENDER_SIZE });
+    for (const [suffix, size] of SIZES) {
+      const name = `tray-${element}${suffix}.png`;
+      writeFileSync(
+        join(outDir, name),
+        face.resize({ width: size, height: size, quality: 'best' }).toPNG(),
+      );
+      console.log(`${name}: ${size}x${size}`);
+    }
+  });
 }
 
 void app

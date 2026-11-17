@@ -19,6 +19,7 @@ function $<T extends HTMLElement>(id: string): T {
 const avatar = $<HTMLElement>('avatar');
 const bubble = $<HTMLElement>('bubble');
 const bubbleText = $<HTMLElement>('bubble-text');
+const bubbleName = $<HTMLElement>('bubble-name');
 
 // O SVG é um arquivo do próprio app (não vem de fora), por isso pode entrar como HTML.
 avatar.innerHTML = avatarSvg;
@@ -28,7 +29,20 @@ svg.removeAttribute('role');
 svg.setAttribute('aria-hidden', 'true');
 
 // O balão usa a cor profunda do elemento da persona (contraste ≥ 4,5:1 sobre o fundo claro).
-bubble.style.setProperty('--profunda', getComputedStyle(svg).getPropertyValue('--profunda'));
+function syncBubbleColor(): void {
+  if (svg)
+    bubble.style.setProperty('--profunda', getComputedStyle(svg).getPropertyValue('--profunda'));
+}
+syncBubbleColor();
+
+// Trocar de persona só troca a paleta (data-element) e o nome no balão; a forma é a mesma.
+window.companion.onPersona((persona) => {
+  svg.setAttribute('data-element', persona.element);
+  avatar.dataset['persona'] = persona.id;
+  avatar.title = `Clique para conversar com ${persona.name}`;
+  bubbleName.textContent = persona.name;
+  syncBubbleColor();
+});
 
 // --- Estado -----------------------------------------------------------------------------
 

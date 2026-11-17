@@ -1,10 +1,12 @@
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, session, type Tray } from 'electron';
 import {
   APP_NAME,
   AvatarDirector,
   FactExtractor,
   isRequestAllowed,
+  loadPersonaCatalog,
   Memory,
   MemoryStore,
   OllamaClient,
@@ -16,11 +18,18 @@ import { registerCompanionIpc } from './companion-ipc.js';
 import { loadConfig } from './config.js';
 import { registerChatIpc } from './ipc.js';
 import { registerMemoryIpc, toFactView } from './memory-ipc.js';
-import { buildAppMenu, createTray, type AppMenuActions } from './tray.js';
+import { loadPalettes, PersonaService } from './persona-service.js';
+import { registerPersonaIpc } from './persona-ipc.js';
+import { ProfileStore } from './profile.js';
+import { buildAppMenu, createTray, updateTray, type AppMenuActions } from './tray.js';
 import { CompanionStateStore } from './window-position.js';
 import { companionPosition, createChatWindow, createCompanionWindow, showChat } from './windows.js';
 
-const GREETING = `Oi! Eu sou a ${APP_NAME}. Clique em mim para conversar.`;
+/** Raiz do projeto (personas/ e config/), a partir de out/main. */
+const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+
+/** O que o avatar diz antes do onboarding, enquanto a janela de boas-vindas está aberta. */
+const ONBOARDING_HINT = 'Oi! Vamos nos conhecer? Abri uma janela pra você.';
 
 /** 100% local: bloqueia qualquer requisição do navegador que saia do computador. */
 function enforceLocalOnly(): void {
@@ -67,6 +76,7 @@ function openMemory(
   chatLlm: OllamaClient,
   userData: string,
   onAdded: (facts: Fact[]) => void,
+  personaLabel: (personaId: string) => string | undefined,
 ): { memory?: Memory; reason: string } {
   if (!config.memory.enabled) {
     return { reason: 'A memória está desligada (memory.enabled no config.json).' };
@@ -80,6 +90,7 @@ function openMemory(
     const memory = new Memory(store, embedder, new FactExtractor(chatLlm), {
       topK: config.memory.topK,
       onFactsAdded: onAdded,
+      personaLabel,
     });
     return { memory, reason: '' };
   } catch (err) {
@@ -88,9 +99,27 @@ function openMemory(
   }
 }
 
+/** Personas são dados obrigatórios: sem elas o app não tem quem converse. */
+function loadPersonas() {
+  try {
+    return {
+      catalog: loadPersonaCatalog(join(ROOT, 'personas')),
+      palettes: loadPalettes(join(ROOT, 'config', 'elements.json')),
+    };
+  } catch (err) {
+    dialog.showErrorBox(
+      APP_NAME,
+      `Não consegui carregar as personas.\n\n${err instanceof Error ? err.message : String(err)}`,
+    );
+    app.exit(1);
+    throw err;
+  }
+}
+
 async function start(): Promise<void> {
   enforceLocalOnly();
   const userData = app.getPath('userData');
+  const { catalog, palettes } = loadPersonas();
   const { config, warning } = await loadConfig(userData);
   if (warning) {
     console.warn(`[config] ${warning}`);
@@ -110,8 +139,43 @@ async function start(): Promise<void> {
     if (!companion.isDestroyed()) companion.webContents.send(IPC.avatarState, snapshot);
   });
 
+  const chatLlm = new OllamaClient(config.llm);
+  // A memória e as personas dependem uma da outra; as referências são preenchidas logo abaixo.
+  const late: { personas?: PersonaService; chat?: ReturnType<typeof registerChatIpc> } = {};
+  const { memory, reason } = openMemory(
+    config,
+    chatLlm,
+    userData,
+    (facts) => {
+      if (!chat.isDestroyed()) {
+        chat.webContents.send(IPC.memoryEvent, { type: 'added', facts: facts.map(toFactView) });
+      }
+    },
+    (id) => late.personas?.label(id),
+  );
+  // Carrega o modelo de embedding em segundo plano: a frio ele leva vários segundos.
+  void memory?.warmUp();
+
+  const profiles = new ProfileStore(userData);
+  const service = new PersonaService(
+    catalog,
+    palettes,
+    profiles,
+    await profiles.load(),
+    () => late.chat,
+    memory,
+  );
+  late.personas = service;
+
   const actions: AppMenuActions = {
     openChat: () => showChat(chat),
+    personas: () => ({
+      current: service.current,
+      active: catalog.active(),
+    }),
+    selectPersona: (id) => {
+      void service.select(id).catch((e: unknown) => console.warn('[personas]', e));
+    },
     isCompanionVisible: () => companion.isVisible(),
     setCompanionVisible: (visible) => {
       if (visible) companion.showInactive();
@@ -122,17 +186,12 @@ async function start(): Promise<void> {
     quit: () => app.quit(),
   };
 
-  const chatLlm = new OllamaClient(config.llm);
-  const { memory, reason } = openMemory(config, chatLlm, userData, (facts) => {
-    if (!chat.isDestroyed()) {
-      chat.webContents.send(IPC.memoryEvent, { type: 'added', facts: facts.map(toFactView) });
-    }
+  late.chat = registerChatIpc(chat, chatLlm, director, {
+    memory,
+    speaker: service.speaker(),
   });
-  // Carrega o modelo de embedding em segundo plano: a frio ele leva vários segundos.
-  void memory?.warmUp();
-
-  registerChatIpc(chat, chatLlm, director, memory);
   registerMemoryIpc(chat, memory, reason);
+  registerPersonaIpc(chat, companion, service);
   registerCompanionIpc(companion, director, {
     openChat: actions.openChat,
     openMenu: () => buildAppMenu(actions).popup({ window: companion }),
@@ -143,9 +202,16 @@ async function start(): Promise<void> {
     },
   });
   tray = createTray(actions);
+  service.onChanged((p) => {
+    if (tray) updateTray(tray, p);
+  });
 
-  if (saved.visible) {
-    companion.webContents.once('did-finish-load', () => director.say(GREETING));
+  if (!service.onboarded) {
+    // Primeira abertura: o chat abre com as boas-vindas e a escolha de persona.
+    chat.once('ready-to-show', () => showChat(chat));
+    companion.webContents.once('did-finish-load', () => director.say(ONBOARDING_HINT));
+  } else if (saved.visible) {
+    companion.webContents.once('did-finish-load', () => director.say(service.current.greeting));
   } else {
     // Sem o avatar na tela, abre o chat para o app não parecer que não abriu.
     chat.once('ready-to-show', () => showChat(chat));

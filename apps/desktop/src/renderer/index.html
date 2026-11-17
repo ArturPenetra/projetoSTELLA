@@ -13,20 +13,29 @@
     <header class="topbar">
       <div class="title">
         <span id="status-dot" class="dot" aria-hidden="true"></span>
-        <h1>Stella</h1>
+        <h1 id="persona-name">Stella</h1>
       </div>
       <div class="actions">
+        <button
+          id="personas-open"
+          class="ghost"
+          type="button"
+          title="Ver e trocar de persona"
+          aria-controls="persona-panel"
+        >
+          Personas
+        </button>
         <button
           id="memory-open"
           class="ghost"
           type="button"
-          title="Ver o que a Stella lembra sobre você"
+          title="Ver o que fica guardado sobre você"
           aria-controls="memory-panel"
         >
           Memória
         </button>
         <button id="reset" class="ghost" type="button" title="Começar uma conversa nova">
-          Nova conversa
+          Nova
         </button>
       </div>
     </header>
@@ -37,7 +46,7 @@
     </div>
 
     <main id="messages" class="messages" aria-live="polite">
-      <p class="empty" id="empty">Diga oi para a Stella. Tudo roda aqui no seu computador.</p>
+      <p class="empty" id="empty">Diga oi. Tudo roda aqui no seu computador.</p>
     </main>
 
     <form id="composer" class="composer">
@@ -60,7 +69,7 @@
       hidden
     >
       <header class="memory-head">
-        <h2 id="memory-title">O que a Stella lembra</h2>
+        <h2 id="memory-title">O que fica na memória</h2>
         <button id="memory-close" class="ghost" type="button">Fechar</button>
       </header>
       <p id="memory-status" class="memory-status"></p>
@@ -72,7 +81,7 @@
       <footer class="memory-foot">
         <p class="hint">
           Apagar vale a partir da próxima mensagem. O que já foi dito nesta conversa continua no
-          contexto até você clicar em "Nova conversa".
+          contexto até você começar uma conversa nova (botão "Nova").
         </p>
         <label class="check">
           <input id="memory-clear-history" type="checkbox" />
@@ -81,6 +90,24 @@
         <button id="memory-clear" class="danger" type="button">Esquecer tudo</button>
       </footer>
     </section>
+
+    <section
+      id="persona-panel"
+      class="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="persona-title"
+      hidden
+    ></section>
+
+    <section
+      id="onboarding"
+      class="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-title"
+      hidden
+    ></section>
 
     <script type="module" src="./main.ts"></script>
   </body>

@@ -187,7 +187,20 @@ button:focus-visible {
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+}
+.topbar .actions button {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.title {
+  min-width: 0;
+}
+.title h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 button.small {
@@ -312,4 +325,235 @@ button.forget:hover {
   align-items: center;
   font-size: 0.88rem;
   color: var(--muted);
+}
+
+/* --- Nome de quem respondeu -------------------------------------------------------- */
+
+.msg.assistant[data-speaker]::before {
+  content: attr(data-speaker);
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: var(--glow);
+}
+.msg.assistant[data-element='fogo']::before {
+  color: var(--speaker-fogo, var(--glow));
+}
+.msg.assistant[data-element='terra']::before {
+  color: var(--speaker-terra, var(--glow));
+}
+.msg.assistant[data-element='ar']::before {
+  color: var(--speaker-ar, var(--glow));
+}
+.msg.assistant[data-element='agua']::before {
+  color: var(--speaker-agua, var(--glow));
+}
+
+/* --- Painéis de personas e onboarding --------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  z-index: 10;
+  overflow-y: auto;
+}
+.overlay[hidden] {
+  display: none;
+}
+.overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #ffffff14;
+}
+.overlay-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.overlay-status {
+  margin: 10px 16px 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.overlay-foot {
+  margin-top: auto;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #ffffff14;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.overlay-foot .hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.persona-grid {
+  list-style: none;
+  margin: 0;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.persona-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid transparent;
+}
+.persona-card[aria-current='true'] {
+  border-color: var(--glow);
+}
+.persona-card:disabled {
+  opacity: 0.4;
+}
+.persona-card-name {
+  font-size: 0.92rem;
+}
+.persona-card-role {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+}
+.mini-avatar {
+  display: block;
+  object-fit: contain;
+}
+
+#onboarding {
+  padding: 20px 18px;
+  gap: 12px;
+}
+.onboarding-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+#onboarding > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.welcome-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.welcome-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  animation: entrar 300ms ease-out;
+}
+.welcome-item p {
+  margin: 2px 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.sign-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.sign-grid button {
+  background: var(--surface);
+}
+.preference-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.preference-list button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  background: var(--surface);
+}
+.preference-list span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.date-form {
+  display: flex;
+  gap: 8px;
+}
+.date-form input,
+.date-form select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid #ffffff22;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.date-form input {
+  width: 5em;
+}
+.form-error {
+  color: var(--danger);
+  font-size: 0.88rem;
+  margin: 0;
+}
+.form-error:empty {
+  display: none;
+}
+.suggestion {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.suggestion-name {
+  display: block;
+  font-size: 1.15rem;
+}
+.suggestion-role {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.suggestion-greeting {
+  margin: 6px 0 0;
+  font-style: italic;
+}
+.suggestion-reason {
+  color: var(--muted);
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-item {
+    animation: none;
+  }
 }

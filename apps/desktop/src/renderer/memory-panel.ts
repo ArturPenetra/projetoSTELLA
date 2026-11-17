@@ -19,7 +19,7 @@ const dateFormat = new Intl.DateTimeFormat('pt-BR', {
 });
 
 /**
- * Tela "O que a Stella lembra": ver, editar e esquecer fatos. Vale para todas as personas.
+ * Tela "O que fica na memória": ver, editar e esquecer fatos. Vale para todas as personas.
  * Todos os textos entram com textContent (nunca como HTML): fatos vêm da conversa.
  */
 export function setupMemoryPanel(stella: StellaApi, openButton: HTMLButtonElement) {

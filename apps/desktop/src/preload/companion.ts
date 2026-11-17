@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { AvatarSnapshot } from '@stella/core';
-import { IPC, type CompanionApi } from '../shared/ipc.js';
+import { IPC, type CompanionApi, type SpeakerView } from '../shared/ipc.js';
 
 /** API da janela do avatar: só recebe o estado e avisa cliques e arrastes. */
 const api: CompanionApi = {
@@ -9,6 +9,12 @@ const api: CompanionApi = {
     ipcRenderer.on(IPC.avatarState, handler);
     void ipcRenderer.invoke(IPC.avatarGet).then(listener);
     return () => ipcRenderer.removeListener(IPC.avatarState, handler);
+  },
+  onPersona: (listener) => {
+    const handler = (_e: IpcRendererEvent, persona: SpeakerView) => listener(persona);
+    ipcRenderer.on(IPC.companionPersona, handler);
+    void ipcRenderer.invoke(IPC.companionPersonaGet).then(listener);
+    return () => ipcRenderer.removeListener(IPC.companionPersona, handler);
   },
   setInteractive: (interactive) => ipcRenderer.send(IPC.companionInteractive, interactive),
   dragStart: () => ipcRenderer.send(IPC.companionDragStart),

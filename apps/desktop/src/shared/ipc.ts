@@ -1,4 +1,11 @@
-import type { AvatarSnapshot, LlmErrorCode, LlmStatus } from '@stella/core';
+import type {
+  AvatarSnapshot,
+  ElementId,
+  LlmErrorCode,
+  LlmStatus,
+  Preference,
+  SignId,
+} from '@stella/core';
 
 /** Nomes dos canais IPC. O renderer só fala com o processo principal por eles. */
 export const IPC = {
@@ -13,8 +20,16 @@ export const IPC = {
   memoryDelete: 'memory:delete',
   memoryClear: 'memory:clear',
   memoryEvent: 'memory:event',
+  personaState: 'persona:state',
+  personaSelect: 'persona:select',
+  personaSuggest: 'persona:suggest',
+  personaSignsForDate: 'persona:signs-for-date',
+  personaFinishOnboarding: 'persona:finish-onboarding',
+  personaChanged: 'persona:changed',
   avatarState: 'avatar:state',
   avatarGet: 'avatar:get',
+  companionPersona: 'companion:persona',
+  companionPersonaGet: 'companion:persona-get',
   companionInteractive: 'companion:interactive',
   companionDragStart: 'companion:drag-start',
   companionDragMove: 'companion:drag-move',
@@ -25,7 +40,16 @@ export const IPC = {
 
 export const MAX_MESSAGE_LENGTH = 8000;
 
+/** Quem está respondendo (aparece acima de cada fala da companheira). */
+export interface SpeakerView {
+  id: string;
+  name: string;
+  element: ElementId;
+}
+
 export type ChatEvent =
+  /** Começo de uma resposta: também chega quando a persona fala por conta própria. */
+  | { requestId: string; type: 'start'; speaker: SpeakerView }
   | { requestId: string; type: 'token'; text: string }
   | { requestId: string; type: 'done'; outputTokens?: number; totalMs?: number }
   | { requestId: string; type: 'error'; code: LlmErrorCode | 'internal'; message: string };
@@ -45,6 +69,51 @@ export type MemoryStatus =
 export type MemoryEvent = { type: 'added'; facts: FactView[] };
 
 export const MAX_FACT_LENGTH = 300;
+
+/** Cores de um elemento (config/elements.json). */
+export interface Palette {
+  primaria: string;
+  secundaria: string;
+  profunda: string;
+  brilho: string;
+}
+
+export interface PersonaView {
+  id: string;
+  name: string;
+  element: ElementId;
+  status: 'active' | 'planned';
+  gender: 'feminine' | 'masculine';
+  role: string;
+  coreTrait: string;
+  greeting: string;
+  sign: SignId;
+  signName: string;
+  palette: Palette;
+}
+
+export interface PersonaState {
+  current: PersonaView;
+  /** As 12, na ordem do zodíaco; as futuras com status "planned". */
+  personas: PersonaView[];
+  onboarded: boolean;
+  sign: SignId | null;
+  preference: Preference | null;
+  signs: { id: SignId; name: string }[];
+}
+
+export interface SuggestionView {
+  persona: PersonaView;
+  ideal: PersonaView;
+  standIn: boolean;
+  reason: string;
+}
+
+export interface FinishOnboarding {
+  personaId: string;
+  sign: SignId | null;
+  preference: Preference | null;
+}
 
 export interface StellaApi {
   appName: string;
@@ -69,12 +138,24 @@ export interface StellaApi {
     /** Avisa quando a Stella guarda fatos novos. */
     onEvent(listener: (event: MemoryEvent) => void): () => void;
   };
+  personas: {
+    state(): Promise<PersonaState>;
+    /** Troca a persona (só ativas). A nova cumprimenta e retoma o assunto. */
+    select(id: string): Promise<void>;
+    suggest(sign: SignId, preference: Preference): Promise<SuggestionView>;
+    /** Signo pela data (dia e mês). Dois signos quando a data cai no limite. */
+    signsForDate(day: number, month: number): Promise<SignId[]>;
+    finishOnboarding(choice: FinishOnboarding): Promise<void>;
+    onChanged(listener: (persona: PersonaView) => void): () => void;
+  };
 }
 
 /** API da janela da companheira (avatar). Não tem acesso ao chat nem ao Ollama. */
 export interface CompanionApi {
   /** Recebe o estado do avatar; chamado logo de início com o estado atual. */
   onState(listener: (state: AvatarSnapshot) => void): () => void;
+  /** Nome e elemento da persona atual; chamado logo de início também. */
+  onPersona(listener: (persona: SpeakerView) => void): () => void;
   /** Avisa se o mouse está sobre o avatar (fora dele, os cliques atravessam a janela). */
   setInteractive(interactive: boolean): void;
   dragStart(): void;
