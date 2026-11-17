@@ -20,6 +20,7 @@ const avatar = $<HTMLElement>('avatar');
 const bubble = $<HTMLElement>('bubble');
 const bubbleText = $<HTMLElement>('bubble-text');
 const bubbleName = $<HTMLElement>('bubble-name');
+const bubblePage = $<HTMLElement>('bubble-page');
 
 // O SVG é um arquivo do próprio app (não vem de fora), por isso pode entrar como HTML.
 avatar.innerHTML = avatarSvg;
@@ -72,6 +73,11 @@ function render(state: AvatarSnapshot): void {
   bubble.hidden = false;
   bubble.classList.toggle('is-typing', state.typing);
   bubbleText.textContent = state.bubble;
+  // Fala longa em várias páginas: mostra "2/4"; clicar passa para a próxima.
+  bubblePage.hidden = state.pages < 2;
+  bubblePage.textContent = `${state.page}/${state.pages}`;
+  bubble.title = state.page < state.pages ? 'Clique para ver o resto' : 'Clique para abrir o chat';
+  ensureFits();
 }
 
 api.onState(render);
@@ -146,4 +152,13 @@ avatar.addEventListener('contextmenu', (e) => {
   if (isHit(e.target)) api.openMenu();
 });
 
-bubble.addEventListener('click', () => api.openChat());
+bubble.addEventListener('click', () => api.bubbleClick());
+
+/**
+ * Rede de segurança: as páginas são pensadas para caber (150 caracteres), mas se uma
+ * palavra ou fonte diferente fizer o balão passar do topo da janela, a letra diminui.
+ */
+function ensureFits(): void {
+  bubble.classList.remove('compact');
+  if (bubble.getBoundingClientRect().top < 0) bubble.classList.add('compact');
+}

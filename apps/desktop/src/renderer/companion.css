@@ -55,11 +55,27 @@ body {
   transform: translateX(-50%) rotate(45deg);
 }
 
+.bubble-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 2px;
+}
 .bubble-name {
-  display: block;
   font-size: 0.8rem;
   color: var(--profunda, #1b3f80);
-  margin-bottom: 2px;
+}
+.bubble-page {
+  font-size: 0.75rem;
+  color: var(--profunda, #1b3f80);
+  opacity: 0.8;
+}
+.bubble-page[hidden] {
+  display: none;
+}
+.bubble.compact .bubble-text {
+  font-size: 0.82rem;
+  line-height: 1.3;
 }
 
 .bubble-text {

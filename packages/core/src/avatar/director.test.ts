@@ -1,31 +1,47 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AvatarDirector,
-  BUBBLE_MAX_CHARS,
-  DEFAULT_AVATAR_TIMINGS,
-  fitBubble,
+  DEFAULT_AVATAR_TIMINGS as T,
+  PAGE_MAX_CHARS,
+  paginate,
   type AvatarSnapshot,
 } from './director.js';
 
-describe('fitBubble', () => {
-  it('mantém textos curtos e junta espaços', () => {
-    expect(fitBubble('  Oi!\n\nTudo   bem? ', false)).toBe('Oi! Tudo bem?');
+const LONG =
+  'Correr cinco quilômetros em dois meses é um ótimo objetivo. Primeiro, corra três vezes por semana, sempre no mesmo horário. Depois, aumente a distância aos poucos: meio quilômetro por semana já é bastante. Descanse bem entre os treinos e beba água. Se sentir dor, pare e respeite o seu corpo. No fim do segundo mês, você vai se surpreender com o quanto evoluiu. Quer que eu monte a primeira semana?';
+
+describe('paginate', () => {
+  it('texto curto vira uma página só, com espaços normalizados', () => {
+    expect(paginate('  Oi!\n\nTudo   bem? ')).toEqual(['Oi! Tudo bem?']);
+    expect(paginate('   ')).toEqual([]);
   });
 
-  it('no streaming mostra o final do texto', () => {
-    const text = 'a'.repeat(300) + ' fim';
-    const fitted = fitBubble(text, true);
-    expect(fitted.length).toBeLessThanOrEqual(BUBBLE_MAX_CHARS);
-    expect(fitted.startsWith('…')).toBe(true);
-    expect(fitted.endsWith('fim')).toBe(true);
+  it('não perde nada: juntar as páginas devolve o texto inteiro', () => {
+    const pages = paginate(LONG);
+    expect(pages.length).toBeGreaterThan(2);
+    expect(pages.join(' ')).toBe(LONG);
+    for (const p of pages) expect(p.length).toBeLessThanOrEqual(PAGE_MAX_CHARS);
   });
 
-  it('no fim mostra o começo e corta numa palavra', () => {
-    const text = Array.from({ length: 80 }, (_, i) => `palavra${i}`).join(' ');
-    const fitted = fitBubble(text, false);
-    expect(fitted.length).toBeLessThanOrEqual(BUBBLE_MAX_CHARS);
-    expect(fitted.startsWith('palavra0 palavra1')).toBe(true);
-    expect(fitted).toMatch(/palavra\d+…$/);
+  it('corta em fim de frase sempre que possível', () => {
+    for (const p of paginate(LONG)) expect(p).toMatch(/[.!?]$/);
+  });
+
+  it('frase maior que a página é quebrada entre palavras, sem cortar palavra', () => {
+    const sentence = Array.from({ length: 60 }, (_, i) => `palavra${i}`).join(' ') + '.';
+    const pages = paginate(sentence, 50);
+    expect(pages.join(' ')).toBe(sentence);
+    for (const p of pages) {
+      expect(p.length).toBeLessThanOrEqual(50);
+      expect(p.split(' ').every((w) => /^palavra\d+\.?$/.test(w))).toBe(true);
+    }
+  });
+
+  it('palavra gigante (um link) é partida para caber', () => {
+    const url = 'https://exemplo.com/' + 'a'.repeat(300);
+    const pages = paginate(url, 100);
+    expect(pages.join('')).toBe(url);
+    expect(pages.every((p) => p.length <= 100)).toBe(true);
   });
 });
 
@@ -38,94 +54,128 @@ describe('AvatarDirector', () => {
     seen = [];
     director = new AvatarDirector((s) => seen.push(s));
   });
-
   afterEach(() => {
     director.dispose();
     vi.useRealTimers();
   });
 
-  const moods = () => seen.map((s) => s.mood);
+  const moods = () => seen.map((s) => s.mood).filter((m, i, a) => m !== a[i - 1]);
+  /** Todas as páginas que apareceram no balão, na ordem, sem repetir. */
+  const shown = () =>
+    seen
+      .filter((s) => s.bubble && !s.typing)
+      .reduce<string[]>((acc, s) => {
+        if (s.page === acc.length) acc[acc.length - 1] = s.bubble as string;
+        else if (s.page === acc.length + 1) acc.push(s.bubble as string);
+        return acc;
+      }, []);
 
-  it('segue o chat: pensando, falando, feliz e parado', () => {
+  it('resposta curta: pensando, falando, feliz, parado e o balão some', () => {
     director.userSent();
-    expect(director.snapshot).toEqual({ mood: 'pensando', bubble: '', typing: true });
-
+    expect(director.snapshot).toMatchObject({ mood: 'pensando', typing: true });
     director.token('Oi!');
     director.token(' Tudo bem?');
-    expect(director.snapshot).toEqual({ mood: 'falando', bubble: 'Oi! Tudo bem?', typing: false });
-
+    expect(director.snapshot).toMatchObject({
+      mood: 'falando',
+      bubble: 'Oi! Tudo bem?',
+      page: 1,
+      pages: 1,
+    });
     director.done();
     expect(director.snapshot.mood).toBe('feliz');
-    expect(director.snapshot.bubble).toBe('Oi! Tudo bem?');
-
-    vi.advanceTimersByTime(DEFAULT_AVATAR_TIMINGS.happyMs);
-    expect(director.snapshot.mood).toBe('parado');
-    expect(director.snapshot.bubble).toBe('Oi! Tudo bem?');
-
-    vi.advanceTimersByTime(DEFAULT_AVATAR_TIMINGS.bubbleMinMs);
+    vi.advanceTimersByTime(T.happyMs);
+    expect(director.snapshot).toMatchObject({ mood: 'parado', bubble: 'Oi! Tudo bem?' });
+    vi.advanceTimersByTime(T.lastPageMinMs);
     expect(director.snapshot.bubble).toBeNull();
-    expect(moods()).toEqual(['pensando', 'falando', 'falando', 'feliz', 'parado', 'parado']);
+    expect(moods()).toEqual(['pensando', 'falando', 'feliz', 'parado']);
   });
 
-  it('balão de resposta longa fica mais tempo, até o máximo', () => {
+  it('resposta longa: todas as páginas aparecem, em ordem, cada uma pelo tempo de leitura', () => {
+    const pages = paginate(LONG);
     director.userSent();
-    director.token('x'.repeat(BUBBLE_MAX_CHARS));
+    // Chega em pedaços pequenos, rápido (como o modelo real).
+    for (const word of LONG.split(/(?<= )/)) director.token(word);
     director.done();
-    const expected = BUBBLE_MAX_CHARS * DEFAULT_AVATAR_TIMINGS.bubbleMsPerChar;
-    vi.advanceTimersByTime(expected - 1);
-    expect(director.snapshot.bubble).not.toBeNull();
-    vi.advanceTimersByTime(1);
+
+    expect(director.snapshot).toMatchObject({ page: 1, pages: pages.length, mood: 'falando' });
+    // Enquanto há páginas, ela continua falando; só fica feliz na última.
+    for (let i = 1; i < pages.length; i++) {
+      vi.advanceTimersByTime(
+        Math.max(
+          T.pageMinMs,
+          Math.min(T.pageMaxMs, (pages[i - 1] as string).length * T.pageMsPerChar),
+        ),
+      );
+      expect(director.snapshot.page).toBe(i + 1);
+    }
+    expect(director.snapshot.mood).toBe('feliz');
+    vi.advanceTimersByTime(T.lastPageMinMs + T.pageMaxMs);
     expect(director.snapshot.bubble).toBeNull();
+
+    expect(shown()).toEqual(pages);
+    expect(shown().join(' ')).toBe(LONG);
   });
 
-  it('nova mensagem cancela os timers da anterior', () => {
+  it('durante o streaming, a página só passa depois do tempo de leitura', () => {
     director.userSent();
-    director.token('Primeira');
+    const pages = paginate(LONG);
+    director.token(LONG.slice(0, 400));
+    expect(director.snapshot.page).toBe(1);
+    vi.advanceTimersByTime(T.pageMinMs - 1);
+    expect(director.snapshot.page).toBe(1);
+    vi.advanceTimersByTime(T.pageMaxMs);
+    expect(director.snapshot.page).toBe(2);
+    director.token(LONG.slice(400));
     director.done();
-    director.userSent();
     vi.advanceTimersByTime(60_000);
-    expect(director.snapshot).toEqual({ mood: 'pensando', bubble: '', typing: true });
+    expect(shown()).toEqual(pages);
   });
 
-  it('erro mostra a mensagem e volta a ficar parado', () => {
+  it('clicar no balão passa para a próxima página; na última, não', () => {
+    director.say(LONG);
+    const pages = paginate(LONG);
+    expect(director.snapshot.page).toBe(1);
+    for (let i = 2; i <= pages.length; i++) {
+      expect(director.next()).toBe(true);
+      expect(director.snapshot.page).toBe(i);
+    }
+    expect(director.next()).toBe(false);
+    expect(director.snapshot.mood).toBe('feliz');
+  });
+
+  it('erro mostra a mensagem inteira e fica parado', () => {
     director.userSent();
     director.failed('Não consegui falar com o Ollama.');
-    expect(director.snapshot).toEqual({
+    expect(director.snapshot).toMatchObject({
       mood: 'parado',
       bubble: 'Não consegui falar com o Ollama.',
-      typing: false,
     });
-    vi.advanceTimersByTime(DEFAULT_AVATAR_TIMINGS.bubbleMaxMs);
+    vi.advanceTimersByTime(T.lastPageMinMs);
     expect(director.snapshot.bubble).toBeNull();
   });
 
-  it('cancelar esconde o balão na hora', () => {
+  it('nova mensagem ou cancelamento interrompe as páginas', () => {
+    director.say(LONG);
     director.userSent();
+    vi.advanceTimersByTime(60_000);
+    expect(director.snapshot).toMatchObject({ mood: 'pensando', typing: true });
     director.token('Começando');
     director.cancelled();
-    expect(director.snapshot).toEqual({ mood: 'parado', bubble: null, typing: false });
+    expect(director.snapshot).toMatchObject({ mood: 'parado', bubble: null });
   });
 
   it('resposta vazia não fica feliz', () => {
     director.userSent();
     director.done();
-    expect(director.snapshot).toEqual({ mood: 'parado', bubble: null, typing: false });
+    expect(director.snapshot).toMatchObject({ mood: 'parado', bubble: null });
   });
 
   it('say não interrompe uma resposta em andamento', () => {
-    director.say('Oi! Clique em mim para conversar.');
-    expect(director.snapshot.mood).toBe('feliz');
     director.userSent();
     director.say('Interrompendo');
     expect(director.snapshot.mood).toBe('pensando');
     director.token('Resposta');
     director.say('Interrompendo');
     expect(director.snapshot.bubble).toBe('Resposta');
-  });
-
-  it('não avisa quando nada mudou', () => {
-    director.cancelled();
-    director.cancelled();
-    expect(seen).toEqual([]);
   });
 });

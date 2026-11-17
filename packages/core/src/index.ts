@@ -40,9 +40,9 @@ export {
 
 export {
   AvatarDirector,
-  BUBBLE_MAX_CHARS,
   DEFAULT_AVATAR_TIMINGS,
-  fitBubble,
+  PAGE_MAX_CHARS,
+  paginate,
   type AvatarMood,
   type AvatarSnapshot,
   type AvatarTimings,

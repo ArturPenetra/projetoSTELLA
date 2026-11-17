@@ -21,6 +21,7 @@ const api: CompanionApi = {
   dragMove: (dx, dy) => ipcRenderer.send(IPC.companionDragMove, dx, dy),
   dragEnd: () => ipcRenderer.send(IPC.companionDragEnd),
   openChat: () => ipcRenderer.send(IPC.companionOpenChat),
+  bubbleClick: () => ipcRenderer.send(IPC.companionBubbleClick),
   openMenu: () => ipcRenderer.send(IPC.companionMenu),
 };
 

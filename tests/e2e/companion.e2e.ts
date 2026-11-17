@@ -94,12 +94,10 @@ test('o avatar muda de estado conforme o chat', async () => {
   await chat.locator('#input').fill('Oi, Stella!');
   await chat.keyboard.press('Enter');
 
-  await expect(companion.locator('#avatar')).toHaveAttribute('data-mood', 'pensando');
-  await expect(companion.locator('#bubble')).toHaveClass(/is-typing/);
+  // Os estados intermediários duram pouco: a ordem é conferida pela gravação (recordAvatar),
+  // que não perde nenhum mesmo com a máquina ocupada. As capturas são só para ver.
+  await expect(companion.locator('#avatar')).toHaveAttribute('data-mood', /pensando|falando|feliz/);
   await companion.screenshot({ path: 'test-results/companion-pensando.png', omitBackground: true });
-
-  await expect(companion.locator('#avatar')).toHaveAttribute('data-mood', 'falando');
-  await companion.screenshot({ path: 'test-results/companion-falando.png', omitBackground: true });
 
   await expect(companion.locator('#avatar')).toHaveAttribute('data-mood', 'feliz');
   await expect(companion.locator('#bubble-text')).toHaveText('Oi! Que bom te ver por aqui.');
@@ -233,4 +231,85 @@ test('fechar o chat só esconde; a Stella continua aberta', async () => {
 
   // Clicar no avatar de novo reabre o mesmo chat.
   await openChatByAvatar(stella);
+});
+
+const LONG_REPLY =
+  'Correr cinco quilômetros em dois meses é um ótimo objetivo. Primeiro, corra três vezes por semana, sempre no mesmo horário. Depois, aumente a distância aos poucos: meio quilômetro por semana já é bastante. Descanse bem entre os treinos e beba água. Se sentir dor, pare e respeite o seu corpo. No fim do segundo mês, você vai se surpreender com o quanto evoluiu. Quer que eu monte a primeira semana?';
+
+test('fala longa aparece inteira no balão, em várias páginas que cabem na tela', async () => {
+  fake = await startFakeOllama({ reply: LONG_REPLY.split(/(?<= )/), delayMs: 5 });
+  stella = await launch(fake.url);
+  const { companion, app } = stella;
+  const chat = await openChatByAvatar(stella);
+  await expect(chat.locator('#status-dot')).toHaveAttribute('data-state', 'ready');
+  // Fecha o chat para o clique no balão poder reabri-lo no fim.
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()
+      .find((w) => w.webContents.getURL().endsWith('index.html'))
+      ?.hide();
+  });
+  // Grava cada página no momento em que aparece (texto final dela) e se coube na janela.
+  // Assim o teste não depende de ler a página antes de ela passar sozinha.
+  await companion.evaluate(() => {
+    type Page = { page: string; text: string; fits: boolean };
+    const seen: Page[] = [];
+    (globalThis as unknown as { pages: Page[] }).pages = seen;
+    const bubble = document.getElementById('bubble') as HTMLElement;
+    const label = document.getElementById('bubble-page') as HTMLElement;
+    const text = document.getElementById('bubble-text') as HTMLElement;
+    new MutationObserver(() => {
+      if (bubble.hidden || !text.textContent) return;
+      const entry = {
+        page: label.hidden ? '1/1' : (label.textContent ?? ''),
+        text: text.textContent,
+        fits: bubble.getBoundingClientRect().top >= 0 && text.scrollHeight <= text.clientHeight + 1,
+      };
+      const last = seen.at(-1);
+      // A mesma página crescendo no streaming substitui a anterior; página nova entra.
+      if (last && last.page.split('/')[0] === entry.page.split('/')[0])
+        seen[seen.length - 1] = entry;
+      else seen.push(entry);
+    }).observe(bubble, { subtree: true, childList: true, characterData: true, attributes: true });
+  });
+
+  await chat.evaluate(() =>
+    (
+      globalThis as unknown as { stella: { chat: { send(t: string): Promise<unknown> } } }
+    ).stella.chat.send('Me ajuda a correr 5 km?'),
+  );
+
+  const bubble = companion.locator('#bubble');
+  const pageLabel = companion.locator('#bubble-page');
+  // A resposta inteira já está no chat (escondido): a partir daqui o total não muda.
+  await expect(chat.locator('.msg.assistant').last()).toHaveText(LONG_REPLY);
+  await expect(pageLabel).toHaveText(/^\d+\/\d+$/);
+  const total = Number((await pageLabel.textContent())?.split('/')[1]);
+  expect(total).toBeGreaterThan(2);
+
+  // Clica no balão até a última página (algumas podem ter passado sozinhas).
+  for (let i = 0; i < total; i++) {
+    if ((await pageLabel.textContent()) === `${total}/${total}`) break;
+    if (i === 1) {
+      await companion.screenshot({ path: 'test-results/balao-paginas.png', omitBackground: true });
+    }
+    await bubble.click();
+  }
+  await expect(pageLabel).toHaveText(`${total}/${total}`);
+  await expect(companion.locator('#avatar')).toHaveAttribute('data-mood', 'feliz');
+
+  const pages = await companion.evaluate(
+    () =>
+      (globalThis as unknown as { pages: { page: string; text: string; fits: boolean }[] }).pages,
+  );
+  expect(pages.map((p) => p.page.split('/')[0])).toEqual(
+    Array.from({ length: total }, (_, i) => String(i + 1)),
+  );
+  // Nenhuma palavra se perde, e toda página coube no balão.
+  expect(pages.map((p) => p.text).join(' ')).toBe(LONG_REPLY);
+  expect(pages.filter((p) => !p.fits)).toEqual([]);
+
+  // Na última página, clicar no balão abre o chat, com a resposta completa lá também.
+  await bubble.click();
+  await expect.poll(() => isChatVisible(app)).toBe(true);
+  await expect(chat.locator('.msg.assistant').last()).toHaveText(LONG_REPLY);
 });

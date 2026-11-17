@@ -61,6 +61,12 @@ export function registerCompanionIpc(
     if (isFromWindow(event, win)) actions.openChat();
   });
 
+  ipcMain.on(IPC.companionBubbleClick, (event) => {
+    if (!isFromWindow(event, win)) return;
+    // Fala longa: o clique passa para a próxima página. Na última, abre o chat.
+    if (!director.next()) actions.openChat();
+  });
+
   ipcMain.on(IPC.companionMenu, (event) => {
     if (isFromWindow(event, win)) actions.openMenu();
   });
