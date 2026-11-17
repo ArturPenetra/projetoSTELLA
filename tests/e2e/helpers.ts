@@ -58,6 +58,9 @@ export async function launch(
     windowFor(app, 'companion.html'),
     windowFor(app, 'index.html'),
   ]);
+  // Sem animação: com a máquina ocupada, o avatar "respirando" nunca fica parado o bastante
+  // para o Playwright clicar. Também testa o caminho de quem pede menos movimento.
+  await companion.emulateMedia({ reducedMotion: 'reduce' });
   return {
     app,
     dir,

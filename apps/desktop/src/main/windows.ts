@@ -106,9 +106,48 @@ export function createCompanionWindow(position: Point, visible: boolean): Browse
     webPreferences: secureWebPreferences('companion'),
   });
   win.setIgnoreMouseEvents(true, { forward: true });
+  keepOnTop(win);
   win.once('ready-to-show', () => {
     if (visible) win.showInactive();
   });
   load(win, 'companion');
   return win;
+}
+
+/**
+ * Mantém a janela sempre no topo. Medido no Windows 10 com um jogo aberto (League of
+ * Legends): o nível padrão ("floating") era ignorado e a janela ficava atrás das outras;
+ * o nível "screen-saver" funcionou. Se o Windows tirar o topo depois, ele volta.
+ */
+function keepOnTop(win: BrowserWindow): void {
+  // As próprias chamadas de setAlwaysOnTop disparam 'always-on-top-changed'; sem esta
+  // trava, desligar para religar virava um laço sem fim (a janela piscava e gastava CPU).
+  let applying = false;
+  // Se o Windows recusar várias vezes seguidas, para de insistir até a janela aparecer de novo.
+  let retries = 0;
+  const MAX_RETRIES = 5;
+  const apply = (force: boolean) => {
+    if (win.isDestroyed()) return;
+    if (!force && win.isAlwaysOnTop()) {
+      retries = 0;
+      return;
+    }
+    applying = true;
+    try {
+      win.setAlwaysOnTop(false);
+      win.setAlwaysOnTop(true, 'screen-saver');
+    } finally {
+      applying = false;
+    }
+  };
+  apply(true);
+  win.on('show', () => {
+    retries = 0;
+    apply(false);
+  });
+  win.on('always-on-top-changed', (_event, onTop) => {
+    if (onTop || applying || retries >= MAX_RETRIES) return;
+    retries++;
+    setTimeout(() => apply(false), 250);
+  });
 }

@@ -11,7 +11,7 @@ test.afterEach(async () => {
   stella = fake = undefined;
 });
 test('pergunta recebe resposta em streaming', async () => {
-  fake = await startFakeOllama({ reply: ['Oi!', ' Eu sou', ' a Stella.'], delayMs: 80 });
+  fake = await startFakeOllama({ reply: ['Oi!', ' Eu sou', ' a Stella.'], delayMs: 400 });
   stella = await launch(fake.url);
   const page = await openChatByAvatar(stella);
 
@@ -90,6 +90,7 @@ test('as janelas não têm acesso ao Node e cada uma só vê a própria API', as
     process: 'undefined',
     stella: null,
     companion: [
+      'bubbleClick',
       'dragEnd',
       'dragMove',
       'dragStart',
