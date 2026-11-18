@@ -31,6 +31,8 @@ export const IPC = {
   toolsAddFolder: 'tools:add-folder',
   toolsRemoveFolder: 'tools:remove-folder',
   toolsAddApp: 'tools:add-app',
+  toolsStartMenu: 'tools:start-menu',
+  toolsAddStartMenuApp: 'tools:add-start-menu-app',
   toolsRemoveApp: 'tools:remove-app',
   toolsLog: 'tools:log',
   toolsConfirm: 'tools:confirm',
@@ -210,6 +212,10 @@ export interface StellaApi {
     removeFolder(path: string): Promise<ToolsState>;
     /** Abre o diálogo do sistema para escolher um programa (.exe). */
     addApp(): Promise<ToolsState>;
+    /** Atalhos de apps do Menu Iniciar (nome e caminho do atalho). */
+    startMenu(): Promise<AppView[]>;
+    /** Adiciona um atalho da lista do Menu Iniciar (o processo principal confere). */
+    addStartMenuApp(path: string): Promise<ToolsState>;
     removeApp(name: string): Promise<ToolsState>;
     log(): Promise<ToolLogView[]>;
     onConfirm(listener: (prompt: ConfirmPrompt) => void): () => void;

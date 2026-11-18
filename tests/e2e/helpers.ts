@@ -36,7 +36,7 @@ async function windowFor(app: ElectronApplication, page: string): Promise<Page> 
 export async function launch(
   ollamaUrl: string,
   files: Record<string, unknown> = {},
-  options: { dir?: string; onboarded?: boolean } = {},
+  options: { dir?: string; onboarded?: boolean; env?: Record<string, string> } = {},
 ): Promise<Launched> {
   const dir = options.dir ?? (await mkdtemp(join(tmpdir(), 'stella-e2e-')));
   // Pasta nova: por padrão, onboarding já feito e com a Aqua (paleta "ar").
@@ -52,7 +52,7 @@ export async function launch(
   }
   const app = await electron.launch({
     args: [MAIN],
-    env: { ...process.env, STELLA_USER_DATA_DIR: dir },
+    env: { ...process.env, ...options.env, STELLA_USER_DATA_DIR: dir },
   });
   const [companion, chat] = await Promise.all([
     windowFor(app, 'companion.html'),

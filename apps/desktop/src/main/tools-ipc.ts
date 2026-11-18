@@ -5,6 +5,7 @@ import { isInside, type ToolSettings } from '@stella/core';
 import { IPC, type ToolsState } from '../shared/ipc.js';
 import type { ConfirmBroker } from './confirm-broker.js';
 import { assertSender } from './ipc-guard.js';
+import { listStartMenuApps } from './start-menu.js';
 import type { ToolLog, ToolSettingsStore } from './tools-store.js';
 
 const view = (s: ToolSettings): ToolsState => ({
@@ -76,12 +77,31 @@ export function registerToolsIpc(
     });
     const chosen = result.filePaths[0];
     if (result.canceled || !chosen) return view(store.settings);
-    if (extname(chosen).toLowerCase() !== '.exe') throw new Error('Escolha um programa (.exe).');
+    if (extname(chosen).toLowerCase() !== '.exe') {
+      throw new Error('Escolha um programa (.exe). Para atalhos, use "Adicionar do Menu Iniciar".');
+    }
     const name = basename(chosen, extname(chosen));
     return update((s) =>
       s.apps.some((a) => a.path.toLowerCase() === chosen.toLowerCase())
         ? s
         : { ...s, apps: [...s.apps, { name, path: chosen }] },
+    );
+  });
+
+  ipcMain.handle(IPC.toolsStartMenu, async (event) => {
+    assertSender(event, win);
+    return listStartMenuApps();
+  });
+
+  // O renderer escolhe pelo caminho, mas só vale um atalho que está mesmo no Menu Iniciar.
+  ipcMain.handle(IPC.toolsAddStartMenuApp, async (event, path: unknown) => {
+    assertSender(event, win);
+    const entry = (await listStartMenuApps()).find((e) => e.path === path);
+    if (!entry) throw new Error('Esse atalho não está no Menu Iniciar.');
+    return update((s) =>
+      s.apps.some((a) => a.path.toLowerCase() === entry.path.toLowerCase())
+        ? s
+        : { ...s, apps: [...s.apps, { name: entry.name, path: entry.path }] },
     );
   });
 

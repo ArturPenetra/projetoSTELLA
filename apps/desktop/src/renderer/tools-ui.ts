@@ -78,6 +78,46 @@ export function setupTools(stella: StellaApi, onEscape: () => void): void {
     return ul;
   }
 
+  /**
+   * "Adicionar do Menu Iniciar": lista os atalhos com busca. Abrir pelo atalho funciona
+   * com apps que usam um iniciador (como o Discord) e com apps da Microsoft Store.
+   */
+  function startMenuPicker(add: (path: string) => void): HTMLElement {
+    const box = el('div', 'start-menu');
+    const open = button('Adicionar do Menu Iniciar…', () => void show(), '');
+    open.id = 'start-menu-open';
+    box.append(open);
+
+    async function show(): Promise<void> {
+      const entries = await stella.tools.startMenu();
+      const search = el('input', 'start-menu-search');
+      search.type = 'search';
+      search.id = 'start-menu-search';
+      search.placeholder = 'Buscar app…';
+      search.setAttribute('aria-label', 'Buscar app no Menu Iniciar');
+      const results = el('ul', 'start-menu-list');
+      results.id = 'start-menu-list';
+      const fill = () => {
+        const term = search.value.trim().toLowerCase();
+        const shown = entries.filter((e) => e.name.toLowerCase().includes(term)).slice(0, 50);
+        results.replaceChildren(
+          ...(shown.length
+            ? shown.map((e) => {
+                const li = el('li');
+                li.append(button(e.name, () => add(e.path), 'ghost small start-menu-item'));
+                return li;
+              })
+            : [el('li', 'tools-empty', 'Nenhum app encontrado.')]),
+        );
+      };
+      search.addEventListener('input', fill);
+      fill();
+      box.replaceChildren(search, results);
+      search.focus();
+    }
+    return box;
+  }
+
   async function render(state?: ToolsState, error?: string): Promise<void> {
     const s = state ?? (await stella.tools.state());
     const status = el('p', 'overlay-status');
@@ -124,7 +164,8 @@ export function setupTools(stella: StellaApi, onEscape: () => void): void {
         })),
         'Nenhum aplicativo ainda.',
       ),
-      button('Adicionar programa…', () => act(stella.tools.addApp()), 'ghost'),
+      startMenuPicker((path) => act(stella.tools.addStartMenuApp(path))),
+      button('Adicionar programa (.exe)…', () => act(stella.tools.addApp()), 'ghost'),
     );
 
     const logList = el('ul', 'tools-log');

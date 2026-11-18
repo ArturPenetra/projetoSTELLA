@@ -22,6 +22,7 @@ import { registerCompanionIpc } from './companion-ipc.js';
 import { ConfirmBroker } from './confirm-broker.js';
 import { registerToolsIpc } from './tools-ipc.js';
 import { ToolLog, ToolSettingsStore } from './tools-store.js';
+import { createWindowsLauncher, describeShortcut } from './windows-launcher.js';
 import { loadConfig } from './config.js';
 import { registerChatIpc } from './ipc.js';
 import { registerMemoryIpc, toFactView } from './memory-ipc.js';
@@ -206,13 +207,19 @@ async function start(): Promise<void> {
       if (!chat.isDestroyed()) chat.webContents.send(IPC.toolsConfirmDismiss, id);
     },
   );
-  const tools = new ToolRunner([createReadFileTool({ forbiddenDirs }), createOpenAppTool()], {
-    settings: () => toolStore.settings,
-    confirm: (request, signal) => broker.ask(request, service.current.name, signal),
-    // Quem decide as ações vê só a mensagem do usuário (nunca conteúdo de arquivos).
-    router: new IntentRouter(chatLlm),
-    log: (entry) => toolLog.append(entry),
-  });
+  const tools = new ToolRunner(
+    [
+      createReadFileTool({ forbiddenDirs }),
+      createOpenAppTool({ launch: createWindowsLauncher(), describeShortcut }),
+    ],
+    {
+      settings: () => toolStore.settings,
+      confirm: (request, signal) => broker.ask(request, service.current.name, signal),
+      // Quem decide as ações vê só a mensagem do usuário (nunca conteúdo de arquivos).
+      router: new IntentRouter(chatLlm),
+      log: (entry) => toolLog.append(entry),
+    },
+  );
 
   late.chat = registerChatIpc(chat, chatLlm, director, {
     memory,
