@@ -1,6 +1,7 @@
 import type { ToolCall } from '../llm/types.js';
 import type { IntentRouter } from './router.js';
 import {
+  ToolFailure,
   ToolRefusal,
   type Tool,
   type ToolName,
@@ -185,7 +186,10 @@ export class ToolRunner implements ToolHost {
     try {
       result = await tool.run(args, { settings, signal });
     } catch (err) {
-      const message = err instanceof ToolRefusal ? err.message : 'algo deu errado ao executar';
+      const message =
+        err instanceof ToolRefusal || err instanceof ToolFailure
+          ? err.message
+          : 'algo deu errado ao executar';
       return refuse(err instanceof ToolRefusal ? 'bloqueado' : 'erro', action, message, message);
     }
     if (result.untrusted) this.readUntrusted = true;

@@ -11,7 +11,7 @@ import type {
   LlmClient,
   LlmStatus,
 } from '../llm/types.js';
-import { createOpenAppTool } from './open-app.js';
+import { createOpenAppTool, type Launcher } from './open-app.js';
 import { createReadFileTool, MAX_READ_BYTES } from './read-file.js';
 import { IntentRouter, looksLikeFile, mightNeedTool } from './router.js';
 import {
@@ -37,12 +37,15 @@ let confirms: ConfirmRequest[];
 let answer: boolean;
 let log: ToolLogEntry[];
 
+/** Lançador de mentira: registra o caminho e diz que uma janela apareceu. */
+const fakeLaunch = async (p: string) => {
+  launched.push(p);
+  return { opened: true };
+};
+
 function runner() {
   return new ToolRunner(
-    [
-      createReadFileTool({ forbiddenDirs: [appDir] }),
-      createOpenAppTool(async (p) => void launched.push(p)),
-    ],
+    [createReadFileTool({ forbiddenDirs: [appDir] }), createOpenAppTool(fakeLaunch)],
     {
       settings: () => settings,
       confirm: async (req) => {
@@ -315,10 +318,7 @@ async function drain(stream: AsyncIterable<ChatChunk>) {
 
 function routedRunner(classifier: FakeClassifier, confirm?: ToolRunnerOptions['confirm']) {
   return new ToolRunner(
-    [
-      createReadFileTool({ forbiddenDirs: [appDir] }),
-      createOpenAppTool(async (p) => void launched.push(p)),
-    ],
+    [createReadFileTool({ forbiddenDirs: [appDir] }), createOpenAppTool(fakeLaunch)],
     {
       settings: () => settings,
       router: new IntentRouter(classifier),
@@ -434,7 +434,7 @@ describe('ferramentas na conversa', () => {
         throw new Error('fora do ar');
       },
     };
-    const tools = new ToolRunner([createOpenAppTool(async (p) => void launched.push(p))], {
+    const tools = new ToolRunner([createOpenAppTool(fakeLaunch)], {
       settings: () => settings,
       router: new IntentRouter(broken),
       confirm: async () => true,
@@ -493,5 +493,87 @@ describe('refusalReply', () => {
     expect(
       refusalReply([outcome('open_app', 'recusado pelo usuário', 'você escolheu não permitir')]),
     ).toBe('Não abri nada: você escolheu não permitir.');
+  });
+});
+
+describe('open_app: só diz que abriu se abriu de verdade', () => {
+  function runnerWith(launch: Launcher, describeShortcut?: (p: string) => string) {
+    return new ToolRunner(
+      [createOpenAppTool({ launch, ...(describeShortcut ? { describeShortcut } : {}) })],
+      {
+        settings: () => settings,
+        confirm: async (req) => {
+          confirms.push(req);
+          return true;
+        },
+        log: (e) => log.push(e),
+      },
+    );
+  }
+
+  it('nenhuma janela apareceu: é erro, e a resposta explica o que pode ser', async () => {
+    const r = runnerWith(async () => ({ opened: false }));
+    const out = await r.call({ name: 'open_app', arguments: { app: 'Calculadora' } });
+    expect(out.decision).toBe('erro');
+    expect(out.summary).toMatch(/nenhuma janela apareceu/);
+    expect(refusalReply([out])).toMatch(
+      /^Não abri nada: pedi ao Windows para abrir Calculadora, mas nenhuma janela apareceu\. O app pode não estar instalado/,
+    );
+    expect(log.at(-1)?.decision).toBe('erro');
+  });
+
+  it('aceita atalhos (.lnk) e mostra na confirmação para onde apontam', async () => {
+    const lnk = join(root, 'Discord.lnk');
+    writeFileSync(lnk, 'atalho');
+    settings = { ...settings, apps: [{ name: 'Discord', path: lnk }] };
+    const r = runnerWith(fakeLaunch, () => 'C:/Discord/Update.exe --processStart Discord.exe');
+    const out = await r.call({ name: 'open_app', arguments: { app: 'discord' } });
+    expect(out.decision).toBe('executado');
+    expect(confirms.at(-1)?.action).toBe(
+      `Abrir o aplicativo Discord (${lnk}, atalho para C:/Discord/Update.exe --processStart Discord.exe)`,
+    );
+    expect(launched).toEqual([lnk]);
+  });
+
+  it('app que já estava aberto: diz que trouxe a janela para a frente', async () => {
+    const r = runnerWith(async () => ({ opened: true, alreadyOpen: true }));
+    const out = await r.call({ name: 'open_app', arguments: { app: 'Calculadora' } });
+    expect(out).toMatchObject({
+      decision: 'executado',
+      summary: 'Calculadora já estava aberto; trouxe para a frente',
+    });
+  });
+
+  it('o lançador se prepara (com o caminho do app) antes da confirmação', async () => {
+    const order: string[] = [];
+    const launch = Object.assign(
+      async () => {
+        order.push('abrir');
+        return { opened: true };
+      },
+      { prepare: (p: string) => void order.push(`preparar ${p}`) },
+    );
+    const r = new ToolRunner([createOpenAppTool({ launch })], {
+      settings: () => settings,
+      confirm: async () => {
+        order.push('confirmar');
+        return true;
+      },
+    });
+    await r.call({ name: 'open_app', arguments: { app: 'Calculadora' } });
+    expect(order).toEqual([`preparar ${join(root, 'calc.exe')}`, 'confirmar', 'abrir']);
+  });
+
+  it('recusa o que não é programa nem atalho', async () => {
+    const bat = join(root, 'script.bat');
+    writeFileSync(bat, 'echo oi');
+    settings = { ...settings, apps: [{ name: 'Script', path: bat }] };
+    const out = await runnerWith(fakeLaunch).call({
+      name: 'open_app',
+      arguments: { app: 'Script' },
+    });
+    expect(out.decision).toBe('bloqueado');
+    expect(launched).toEqual([]);
+    expect(confirms).toEqual([]);
   });
 });

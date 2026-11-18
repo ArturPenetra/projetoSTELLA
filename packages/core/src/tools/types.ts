@@ -53,6 +53,14 @@ export class ToolRefusal extends Error {
   }
 }
 
+/** A ação foi tentada mas não deu certo; a mensagem explica ao usuário (log: "erro"). */
+export class ToolFailure extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ToolFailure';
+  }
+}
+
 export interface Tool<Args = unknown> {
   name: ToolName;
   risk: ToolRisk;

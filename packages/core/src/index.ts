@@ -108,6 +108,7 @@ export { NO_TOOL_USED_NOTE, TOOL_RESULTS_NOTE } from './chat/session.js';
 export { IntentRouter, looksLikeFile } from './tools/router.js';
 export {
   appEntrySchema,
+  ToolFailure,
   ToolRefusal,
   toolSettingsSchema,
   toolSpec,
@@ -138,9 +139,12 @@ export {
   type ReadFileOptions,
 } from './tools/read-file.js';
 export {
+  APP_EXTENSIONS,
   createOpenAppTool,
   defaultLauncher,
   findApp,
   normalizeAppName,
   type Launcher,
+  type LaunchResult,
+  type OpenAppOptions,
 } from './tools/open-app.js';
