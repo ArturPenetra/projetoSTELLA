@@ -64,7 +64,10 @@ export function setupTools(stella: StellaApi, onEscape: () => void): void {
     return s;
   }
 
-  function list(items: { label: string; detail?: string; remove: () => void }[], empty: string) {
+  function list(
+    items: { label: string; detail?: string; extra?: HTMLElement; remove: () => void }[],
+    empty: string,
+  ) {
     const ul = el('ul', 'tools-list');
     if (items.length === 0) ul.append(el('li', 'tools-empty', empty));
     for (const item of items) {
@@ -72,10 +75,34 @@ export function setupTools(stella: StellaApi, onEscape: () => void): void {
       const text = el('div', 'tools-item');
       text.append(el('span', '', item.label));
       if (item.detail) text.append(el('small', '', item.detail));
+      if (item.extra) text.append(item.extra);
       li.append(text, button('Remover', item.remove, 'ghost small'));
       ul.append(li);
     }
     return ul;
+  }
+
+  /**
+   * Outros nomes do app ("opera" para "Navegador Opera GX"), separados por vírgula.
+   * Salva ao sair do campo ou com Enter.
+   */
+  function aliasesField(
+    aliases: string[],
+    index: number,
+    save: (aliases: string[]) => void,
+  ): HTMLElement {
+    const label = el('label', 'tools-aliases');
+    const input = el('input');
+    input.type = 'text';
+    input.id = `app-aliases-${index}`;
+    input.value = aliases.join(', ');
+    input.placeholder = 'ex.: opera, navegador';
+    input.addEventListener('change', () => save(input.value.split(',')));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') input.blur();
+    });
+    label.append(el('span', '', 'Outros nomes:'), input);
+    return label;
   }
 
   /**
@@ -157,9 +184,12 @@ export function setupTools(stella: StellaApi, onEscape: () => void): void {
     const apps = section(
       'Aplicativos que podem ser abertos',
       list(
-        s.apps.map((a) => ({
+        s.apps.map((a, i) => ({
           label: a.name,
           detail: a.path,
+          extra: aliasesField(a.aliases, i, (aliases) =>
+            act(stella.tools.setAliases(a.path, aliases)),
+          ),
           remove: () => act(stella.tools.removeApp(a.name)),
         })),
         'Nenhum aplicativo ainda.',

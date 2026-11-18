@@ -45,7 +45,8 @@ npm run dev
 - Tudo fica num arquivo no seu computador (`memoria.db`, na pasta de dados do app). Para não guardar nada, use `"memory": { "enabled": false }` no `config.json`.
 - **Ferramentas** (botão no chat): ela pode **ler arquivos de texto** das pastas que você escolher e **abrir aplicativos** de uma lista que você monta. Tudo começa desligado.
   - Abrir um app sempre pede sua confirmação, com a ação escrita por extenso. **Esc** cancela na hora, e uma faixa no topo mostra quando ela está agindo.
-  - Prefira **"Adicionar do Menu Iniciar…"**: abrir pelo atalho funciona como clicar no Menu Iniciar, inclusive com apps como o Discord e os da Microsoft Store. Ela só diz que abriu quando uma janela do app aparece; se o app já estava aberto (até minimizado), ela traz a janela para a frente.
+  - Prefira **"Adicionar do Menu Iniciar…"**: abrir pelo atalho funciona como clicar no Menu Iniciar, inclusive com apps como o Discord e os da Microsoft Store. Ela só diz que abriu quando uma janela do app aparece; se o app já estava aberto (até minimizado), ela traz a janela para a frente. Apps lentos para abrir (como alguns navegadores) têm mais tempo; se a janela ainda não apareceu, ela avisa que o app está carregando.
+  - Dê **outros nomes** a cada app no campo "Outros nomes" (por exemplo, "opera" para "Navegador Opera GX"). Parte do nome também serve ("Opera GX"), desde que só um app combine.
   - Arquivos fora das pastas escolhidas e os arquivos do próprio app nunca são lidos. O que está escrito dentro de um arquivo nunca dispara uma ação.
   - Cada pedido (feito, recusado ou bloqueado) fica registrado em "Últimas ações" e no arquivo `acoes.jsonl`.
 

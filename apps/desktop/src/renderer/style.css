@@ -767,3 +767,24 @@ button.forget:hover {
   width: 100%;
   text-align: left;
 }
+.tools-item {
+  flex: 1;
+}
+.tools-aliases {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.tools-aliases input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg, transparent);
+  border: 1px solid #ffffff22;
+  border-radius: 8px;
+  padding: 3px 8px;
+}

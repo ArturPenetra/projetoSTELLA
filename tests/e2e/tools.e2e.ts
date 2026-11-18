@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { startFakeOllama, type FakeChatRequest, type FakeOllama } from '@stella/core/testing';
@@ -46,7 +47,8 @@ test.beforeEach(async () => {
 test.afterEach(async () => {
   await stella?.close();
   await fake?.close();
-  await rm(files, { recursive: true, force: true });
+  // O app lento fecha sozinho uns segundos depois; até lá, a pasta dele fica em uso.
+  await rm(files, { recursive: true, force: true, maxRetries: 20, retryDelay: 500 });
   stella = fake = undefined;
   // Fecha só os Blocos de Notas que o teste abriu.
   for (const id of notepadIds().filter((id) => !notepadsBefore.includes(id))) {
@@ -207,6 +209,86 @@ test('se nenhuma janela aparece, não diz que abriu', async () => {
   expect((await readLog())[0]).toMatchObject({ tool: 'open_app', decision: 'erro' });
 });
 
+/**
+ * App lento de propósito (um Electron mínimo): a janela só aparece depois de 8 s, como o
+ * Opera GX aberto a frio. Fecha sozinho logo depois.
+ */
+async function slowAppShortcut(): Promise<string> {
+  const dir = join(files, 'app-lento');
+  await mkdir(dir);
+  await writeFile(
+    join(dir, 'package.json'),
+    JSON.stringify({ name: 'app-lento', main: 'main.js' }),
+  );
+  await writeFile(
+    join(dir, 'main.js'),
+    [
+      "const { app, BrowserWindow } = require('electron');",
+      'app.whenReady().then(() => setTimeout(() => {',
+      "  const w = new BrowserWindow({ width: 320, height: 200, title: 'App Lento' });",
+      "  w.loadURL('data:text/html,<title>App Lento</title>');",
+      '  setTimeout(() => app.quit(), 3000);',
+      '}, 8000));',
+      'app.on("window-all-closed", () => app.quit());',
+    ].join('\n'),
+  );
+  const lnk = join(files, 'App Lento.lnk');
+  const electronExe = createRequire(import.meta.url)('electron') as string;
+  // Atalho criado pelo próprio Windows (WScript.Shell), como os do Menu Iniciar.
+  execFileSync(
+    'powershell',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      `$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:LNK); $s.TargetPath = $env:EXE; $s.Arguments = '"' + $env:DIR + '"'; $s.Save()`,
+    ],
+    { env: { ...process.env, LNK: lnk, EXE: electronExe, DIR: dir } },
+  );
+  return lnk;
+}
+
+test('app lento para abrir: espera a janela em vez de dizer que não abriu', async () => {
+  const lnk = await slowAppShortcut();
+  const chat = await start(() => ({ acao: 'abrir_app', alvo: 'lento' }), 'Pronto!', {
+    enabled: { open_app: true },
+    folders: [],
+    apps: [{ name: 'Meu App Lento', path: lnk, aliases: ['lento'] }],
+  });
+  await send(chat, 'Abre o lento');
+  await expect(chat.locator('#confirm-action')).toContainText('Abrir o aplicativo Meu App Lento');
+  await chat.locator('#confirm-allow').click();
+  await expect(chat.locator('.msg.tool-note')).toHaveText('✓ Abri Meu App Lento', {
+    timeout: 30_000,
+  });
+  expect((await readLog())[0]).toMatchObject({ tool: 'open_app', decision: 'executado' });
+});
+
+test('dar outros nomes a um app pela tela de ferramentas', async () => {
+  const chat = await start(() => ({ acao: 'abrir_app', alvo: 'bloquinho' }), 'Pronto!');
+  await chat.locator('#tools-open').click();
+  await chat.locator('#app-aliases-0').fill('bloquinho, notas');
+  await chat.locator('#app-aliases-0').press('Enter');
+  await expect
+    .poll(async () => {
+      const saved = JSON.parse(await readFile(join(stella?.dir ?? '', 'tools.json'), 'utf8')) as {
+        apps: { aliases: string[] }[];
+      };
+      return saved.apps[0]?.aliases;
+    })
+    .toEqual(['bloquinho', 'notas']);
+  // Nome que já é de outro app: a tela explica e não salva.
+  await chat.locator('#app-aliases-1').fill('notas');
+  await chat.locator('#app-aliases-1').press('Enter');
+  await expect(chat.locator('#tools-status')).toHaveText('"notas" já é um nome de Teste.');
+  await chat.screenshot({ path: 'test-results/ferramentas-apelidos.png' });
+  await chat.locator('#tools-panel button', { hasText: 'Fechar' }).click();
+
+  await send(chat, 'Abre o bloquinho');
+  await expect(chat.locator('#confirm-action')).toHaveText(`Abrir o aplicativo Teste (${NOTEPAD})`);
+  await chat.locator('#confirm-deny').click();
+});
+
 test('adicionar um app pelo Menu Iniciar', async () => {
   // Um Menu Iniciar de mentira, numa pasta temporária.
   const appData = join(files, 'AppData');
@@ -233,7 +315,7 @@ test('adicionar um app pelo Menu Iniciar', async () => {
     apps: { name: string; path: string }[];
   };
   expect(saved.apps).toEqual([
-    { name: 'Meu App de Teste', path: join(menu, 'Meu App de Teste.lnk') },
+    { name: 'Meu App de Teste', path: join(menu, 'Meu App de Teste.lnk'), aliases: [] },
   ]);
 });
 

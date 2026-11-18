@@ -6,6 +6,13 @@ import type { LaunchResult, Launcher } from '@stella/core';
 /** Quanto tempo esperar uma janela do app aparecer. */
 export const WINDOW_TIMEOUT_MS = 6000;
 
+/**
+ * Se o processo do app começou a rodar, espera a janela até este tempo. Achado em
+ * 18/11/2026: o Opera GX, aberto a frio, levava mais de 6 s para mostrar a janela, e a
+ * Stella dizia que nada tinha aberto.
+ */
+export const SLOW_START_TIMEOUT_MS = 25_000;
+
 /** Depois disso sem janela nova, se o app já estava aberto, a Stella mostra a janela dele. */
 const ALREADY_OPEN_AFTER_MS = 1500;
 
@@ -20,7 +27,12 @@ export function safeProcessName(name: string | undefined): string | undefined {
  * janela nova ou de outro programa que veio para a frente. Se o app já estava aberto (por
  * exemplo, minimizado), restaura e traz a janela dele para a frente. Não roda mais nada.
  */
-function watcherScript(ownPid: number, timeoutMs: number, target: string | undefined): string {
+function watcherScript(
+  ownPid: number,
+  timeoutMs: number,
+  slowTimeoutMs: number,
+  target: string | undefined,
+): string {
   return [
     '$ErrorActionPreference = "Stop"',
     '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
@@ -48,9 +60,9 @@ function watcherScript(ownPid: number, timeoutMs: number, target: string | undef
     '  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);',
     '  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);',
     '  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();',
-    '  public static long FirstOf(HashSet<uint> pids) {',
+    '  public static long FirstOf(HashSet<uint> pids, List<long> only) {',
     '    long found = 0;',
-    '    EnumWindows((h, l) => { if (pids.Contains(Owner(h)) && IsWindowVisible(h) && GetWindowTextLength(h) > 0) { found = h.ToInt64(); return false; } return true; }, IntPtr.Zero);',
+    '    EnumWindows((h, l) => { if (pids.Contains(Owner(h)) && only.Contains(h.ToInt64()) && IsWindowVisible(h) && GetWindowTextLength(h) > 0) { found = h.ToInt64(); return false; } return true; }, IntPtr.Zero);',
     '    return found;',
     '  }',
     // Restaurar uma janela minimizada é sempre permitido; passar para a frente usa o
@@ -72,25 +84,37 @@ function watcherScript(ownPid: number, timeoutMs: number, target: string | undef
     '$null = [Console]::In.ReadLine()',
     '$before = [StellaWindows]::Visible($own)',
     '$front = [StellaWindows]::Foreground()',
+    // Processos do app que já rodavam: um processo novo quer dizer que ele está abrindo.
+    '$oldPids = New-Object "System.Collections.Generic.HashSet[uint32]"',
+    'if ($target) { foreach ($p in Get-Process -Name $target -ErrorAction SilentlyContinue) { [void]$oldPids.Add([uint32]$p.Id) } }',
     '[Console]::Out.WriteLine("SNAPPED"); [Console]::Out.Flush()',
     '$null = [Console]::In.ReadLine()',
     '$start = [DateTime]::Now',
     `$deadline = $start.AddMilliseconds(${Math.trunc(timeoutMs)})`,
-    'while ([DateTime]::Now -lt $deadline) {',
+    `$slowDeadline = $start.AddMilliseconds(${Math.trunc(slowTimeoutMs)})`,
+    '$starting = $false',
+    'while ([DateTime]::Now -lt $deadline -or ($starting -and [DateTime]::Now -lt $slowDeadline)) {',
     '  Start-Sleep -Milliseconds 300',
     '  foreach ($h in [StellaWindows]::Visible($own)) {',
     '    if (-not $before.Contains($h)) { [Console]::Out.WriteLine("NEW " + [StellaWindows]::Title([IntPtr]$h)); exit 0 }',
     '  }',
     '  $f = [StellaWindows]::Foreground()',
     '  if ($f -ne 0 -and $f -ne $front -and [StellaWindows]::Owner([IntPtr]$f) -ne $own) { [Console]::Out.WriteLine("FRONT " + [StellaWindows]::Title([IntPtr]$f)); exit 0 }',
-    `  if ($target -and ([DateTime]::Now - $start).TotalMilliseconds -ge ${ALREADY_OPEN_AFTER_MS}) {`,
+    '  if ($target) {',
     '    $pids = New-Object "System.Collections.Generic.HashSet[uint32]"',
-    '    foreach ($p in Get-Process -Name $target -ErrorAction SilentlyContinue) { [void]$pids.Add([uint32]$p.Id) }',
-    '    $h = [StellaWindows]::FirstOf($pids)',
-    '    if ($h -ne 0) { [StellaWindows]::Show([IntPtr]$h); [Console]::Out.WriteLine("ALREADY " + [StellaWindows]::Title([IntPtr]$h)); exit 0 }',
+    '    $starting = $false',
+    '    foreach ($p in Get-Process -Name $target -ErrorAction SilentlyContinue) {',
+    '      [void]$pids.Add([uint32]$p.Id)',
+    '      if (-not $oldPids.Contains([uint32]$p.Id)) { $starting = $true }',
+    '    }',
+    `    if (([DateTime]::Now - $start).TotalMilliseconds -ge ${ALREADY_OPEN_AFTER_MS}) {`,
+    '      $h = [StellaWindows]::FirstOf($pids, $before)',
+    '      if ($h -ne 0) { [StellaWindows]::Show([IntPtr]$h); [Console]::Out.WriteLine("ALREADY " + [StellaWindows]::Title([IntPtr]$h)); exit 0 }',
+    '    }',
     '  }',
     '}',
-    '[Console]::Out.WriteLine("NONE")',
+    // Sem janela, mas o app está rodando há pouco: está carregando (não é "não abriu").
+    'if ($starting) { [Console]::Out.WriteLine("STARTING") } else { [Console]::Out.WriteLine("NONE") }',
   ].join('\n');
 }
 
@@ -100,13 +124,17 @@ const IDLE_MS = 120_000;
 interface Watcher {
   /** Tira a "foto" das janelas (logo antes de abrir o app). */
   snapshot(): Promise<void>;
-  /** Avisa que o app foi aberto e espera o resultado ("NEW título", "FRONT título", "NONE"). */
+  /** Avisa que o app foi aberto e espera o resultado (NEW, FRONT, ALREADY, STARTING ou NONE). */
   check(): Promise<string>;
   cancel(): void;
 }
 
 /** Inicia o vigia e espera ele ficar pronto (o PowerShell compila o código uma vez). */
-function startWatcher(timeoutMs: number, target: string | undefined): Promise<Watcher> {
+function startWatcher(
+  timeoutMs: number,
+  slowTimeoutMs: number,
+  target: string | undefined,
+): Promise<Watcher> {
   const powershell = join(
     process.env['SystemRoot'] ?? 'C:\\Windows',
     'System32',
@@ -114,9 +142,10 @@ function startWatcher(timeoutMs: number, target: string | undefined): Promise<Wa
     'v1.0',
     'powershell.exe',
   );
-  const encoded = Buffer.from(watcherScript(process.pid, timeoutMs, target), 'utf16le').toString(
-    'base64',
-  );
+  const encoded = Buffer.from(
+    watcherScript(process.pid, timeoutMs, slowTimeoutMs, target),
+    'utf16le',
+  ).toString('base64');
   const child: ChildProcess = spawn(
     powershell,
     ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
@@ -192,10 +221,13 @@ function startWatcher(timeoutMs: number, target: string | undefined): Promise<Wa
  * `prepare()` começa a preparar o vigia enquanto o usuário lê a confirmação; sem isso, o
  * app só abria depois de 3 a 7 s (o PowerShell compilando).
  */
-export function createWindowsLauncher(timeoutMs = WINDOW_TIMEOUT_MS): Launcher {
+export function createWindowsLauncher(
+  timeoutMs = WINDOW_TIMEOUT_MS,
+  slowTimeoutMs = SLOW_START_TIMEOUT_MS,
+): Launcher {
   let prepared: { path: string; watcher: Promise<Watcher | undefined> } | undefined;
   const warm = (path: string) =>
-    startWatcher(timeoutMs, processNameFor(path)).catch((err: unknown) => {
+    startWatcher(timeoutMs, slowTimeoutMs, processNameFor(path)).catch((err: unknown) => {
       console.warn('[ferramentas] não consegui vigiar as janelas', err);
       return undefined;
     });
@@ -226,6 +258,7 @@ export function createWindowsLauncher(timeoutMs = WINDOW_TIMEOUT_MS): Launcher {
     const detail = result.slice(result.indexOf(' ') + 1);
     if (result.startsWith('NEW ') || result.startsWith('FRONT ')) return { opened: true, detail };
     if (result.startsWith('ALREADY ')) return { opened: true, alreadyOpen: true, detail };
+    if (result === 'STARTING') return { opened: true, starting: true };
     return { opened: false };
   };
   return Object.assign(launch, {

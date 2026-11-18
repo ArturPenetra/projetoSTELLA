@@ -1,7 +1,7 @@
 import { realpath } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 import { dialog, ipcMain, type BrowserWindow } from 'electron';
-import { isInside, type ToolSettings } from '@stella/core';
+import { isInside, setAppAliases, type ToolSettings } from '@stella/core';
 import { IPC, type ToolsState } from '../shared/ipc.js';
 import type { ConfirmBroker } from './confirm-broker.js';
 import { assertSender } from './ipc-guard.js';
@@ -11,7 +11,7 @@ import type { ToolLog, ToolSettingsStore } from './tools-store.js';
 const view = (s: ToolSettings): ToolsState => ({
   enabled: { ...s.enabled },
   folders: [...s.folders],
-  apps: s.apps.map((a) => ({ ...a })),
+  apps: s.apps.map((a) => ({ ...a, aliases: [...a.aliases] })),
 });
 
 /**
@@ -84,7 +84,7 @@ export function registerToolsIpc(
     return update((s) =>
       s.apps.some((a) => a.path.toLowerCase() === chosen.toLowerCase())
         ? s
-        : { ...s, apps: [...s.apps, { name, path: chosen }] },
+        : { ...s, apps: [...s.apps, { name, path: chosen, aliases: [] }] },
     );
   });
 
@@ -101,13 +101,26 @@ export function registerToolsIpc(
     return update((s) =>
       s.apps.some((a) => a.path.toLowerCase() === entry.path.toLowerCase())
         ? s
-        : { ...s, apps: [...s.apps, { name: entry.name, path: entry.path }] },
+        : { ...s, apps: [...s.apps, { name: entry.name, path: entry.path, aliases: [] }] },
     );
   });
 
   ipcMain.handle(IPC.toolsRemoveApp, (event, name: unknown) => {
     assertSender(event, win);
     return update((s) => ({ ...s, apps: s.apps.filter((a) => a.name !== name) }));
+  });
+
+  ipcMain.handle(IPC.toolsSetAliases, (event, path: unknown, aliases: unknown) => {
+    assertSender(event, win);
+    if (
+      typeof path !== 'string' ||
+      !Array.isArray(aliases) ||
+      aliases.length > 20 ||
+      !aliases.every((a) => typeof a === 'string')
+    ) {
+      throw new Error('Pedido inválido.');
+    }
+    return update((s) => setAppAliases(s, path, aliases as string[]));
   });
 
   ipcMain.handle(IPC.toolsLog, (event) => {

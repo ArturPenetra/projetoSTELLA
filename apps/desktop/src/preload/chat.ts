@@ -62,6 +62,7 @@ const api: StellaApi = {
     startMenu: () => ipcRenderer.invoke(IPC.toolsStartMenu),
     addStartMenuApp: (path) => ipcRenderer.invoke(IPC.toolsAddStartMenuApp, path),
     removeApp: (name) => ipcRenderer.invoke(IPC.toolsRemoveApp, name),
+    setAliases: (path, aliases) => ipcRenderer.invoke(IPC.toolsSetAliases, path, aliases),
     log: () => ipcRenderer.invoke(IPC.toolsLog),
     onConfirm: (listener) => {
       const handler = (_e: IpcRendererEvent, prompt: ConfirmPrompt) => listener(prompt);

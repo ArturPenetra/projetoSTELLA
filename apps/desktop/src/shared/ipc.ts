@@ -34,6 +34,7 @@ export const IPC = {
   toolsStartMenu: 'tools:start-menu',
   toolsAddStartMenuApp: 'tools:add-start-menu-app',
   toolsRemoveApp: 'tools:remove-app',
+  toolsSetAliases: 'tools:set-aliases',
   toolsLog: 'tools:log',
   toolsConfirm: 'tools:confirm',
   toolsConfirmDismiss: 'tools:confirm-dismiss',
@@ -142,9 +143,14 @@ export interface FinishOnboarding {
   preference: Preference | null;
 }
 
-export interface AppView {
+export interface StartMenuEntry {
   name: string;
   path: string;
+}
+
+export interface AppView extends StartMenuEntry {
+  /** Outros nomes que o usuário dá ao app ("opera"). */
+  aliases: string[];
 }
 
 export interface ToolsState {
@@ -213,10 +219,12 @@ export interface StellaApi {
     /** Abre o diálogo do sistema para escolher um programa (.exe). */
     addApp(): Promise<ToolsState>;
     /** Atalhos de apps do Menu Iniciar (nome e caminho do atalho). */
-    startMenu(): Promise<AppView[]>;
+    startMenu(): Promise<StartMenuEntry[]>;
     /** Adiciona um atalho da lista do Menu Iniciar (o processo principal confere). */
     addStartMenuApp(path: string): Promise<ToolsState>;
     removeApp(name: string): Promise<ToolsState>;
+    /** Troca os outros nomes de um app da lista ("opera" para "Navegador Opera GX"). */
+    setAliases(path: string, aliases: string[]): Promise<ToolsState>;
     log(): Promise<ToolLogView[]>;
     onConfirm(listener: (prompt: ConfirmPrompt) => void): () => void;
     onConfirmDismiss(listener: (id: string) => void): () => void;

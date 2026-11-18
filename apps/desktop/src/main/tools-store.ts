@@ -12,9 +12,9 @@ import {
 export function suggestedApps(systemRoot = process.env['SystemRoot'] ?? 'C:\\Windows'): AppEntry[] {
   const sys = join(systemRoot, 'System32');
   return [
-    { name: 'Calculadora', path: join(sys, 'calc.exe') },
-    { name: 'Bloco de Notas', path: join(sys, 'notepad.exe') },
-    { name: 'Paint', path: join(sys, 'mspaint.exe') },
+    { name: 'Calculadora', path: join(sys, 'calc.exe'), aliases: [] },
+    { name: 'Bloco de Notas', path: join(sys, 'notepad.exe'), aliases: [] },
+    { name: 'Paint', path: join(sys, 'mspaint.exe'), aliases: [] },
   ].filter((a) => existsSync(a.path));
 }
 
