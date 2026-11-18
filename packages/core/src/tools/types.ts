@@ -8,8 +8,10 @@ import type { ToolSpec } from '../llm/types.js';
 export const appEntrySchema = z.object({
   /** Nome que o usuário (e o modelo) usa: "Calculadora". */
   name: z.string().trim().min(1).max(60),
-  /** Caminho completo do executável. */
+  /** Caminho completo do executável ou do atalho. */
   path: z.string().trim().min(1),
+  /** Outros nomes que o usuário dá ao app ("opera" para "Navegador Opera GX"). */
+  aliases: z.array(z.string().trim().min(1).max(60)).max(10).default([]),
 });
 export type AppEntry = z.infer<typeof appEntrySchema>;
 

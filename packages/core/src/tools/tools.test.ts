@@ -11,7 +11,7 @@ import type {
   LlmClient,
   LlmStatus,
 } from '../llm/types.js';
-import { createOpenAppTool, type Launcher } from './open-app.js';
+import { createOpenAppTool, findApp, setAppAliases, type Launcher } from './open-app.js';
 import { createReadFileTool, MAX_READ_BYTES } from './read-file.js';
 import { IntentRouter, looksLikeFile, mightNeedTool } from './router.js';
 import {
@@ -525,7 +525,7 @@ describe('open_app: só diz que abriu se abriu de verdade', () => {
   it('aceita atalhos (.lnk) e mostra na confirmação para onde apontam', async () => {
     const lnk = join(root, 'Discord.lnk');
     writeFileSync(lnk, 'atalho');
-    settings = { ...settings, apps: [{ name: 'Discord', path: lnk }] };
+    settings = { ...settings, apps: [{ name: 'Discord', path: lnk, aliases: [] }] };
     const r = runnerWith(fakeLaunch, () => 'C:/Discord/Update.exe --processStart Discord.exe');
     const out = await r.call({ name: 'open_app', arguments: { app: 'discord' } });
     expect(out.decision).toBe('executado');
@@ -567,7 +567,7 @@ describe('open_app: só diz que abriu se abriu de verdade', () => {
   it('recusa o que não é programa nem atalho', async () => {
     const bat = join(root, 'script.bat');
     writeFileSync(bat, 'echo oi');
-    settings = { ...settings, apps: [{ name: 'Script', path: bat }] };
+    settings = { ...settings, apps: [{ name: 'Script', path: bat, aliases: [] }] };
     const out = await runnerWith(fakeLaunch).call({
       name: 'open_app',
       arguments: { app: 'Script' },
@@ -575,5 +575,82 @@ describe('open_app: só diz que abriu se abriu de verdade', () => {
     expect(out.decision).toBe('bloqueado');
     expect(launched).toEqual([]);
     expect(confirms).toEqual([]);
+  });
+});
+
+describe('open_app: apelidos e nomes parciais', () => {
+  const app = (name: string, aliases: string[] = []) => ({
+    name,
+    path: `C:/Apps/${name}.lnk`,
+    aliases,
+  });
+  const withApps = (...apps: ReturnType<typeof app>[]): ToolSettings => ({ ...settings, apps });
+
+  it('acha pelo apelido, sem diferença de maiúsculas e acentos', () => {
+    const s = withApps(app('Navegador Opera GX', ['ópera']), app('Bloco de Notas'));
+    expect(findApp(s, 'Opera')?.name).toBe('Navegador Opera GX');
+    expect(findApp(s, 'bloco de notas')?.name).toBe('Bloco de Notas');
+  });
+
+  it('acha por parte do nome quando só um app combina, e nunca escolhe entre dois', () => {
+    const s = withApps(app('Navegador Opera GX'), app('Opera Mail'), app('Discord'));
+    expect(findApp(s, 'Opera GX')?.name).toBe('Navegador Opera GX');
+    expect(findApp(s, 'o app do discord')?.name).toBe('Discord');
+    expect(findApp(s, 'opera')).toBeUndefined();
+    expect(findApp(s, 'aplicativo')).toBeUndefined();
+    expect(findApp(s, 'gx opera navegador')?.name).toBe('Navegador Opera GX');
+  });
+
+  it('palavra pela metade não conta', () => {
+    expect(findApp(withApps(app('Navegador Opera GX')), 'oper')).toBeUndefined();
+  });
+
+  it('pedir pelo apelido abre o app e confirma com o nome dele', async () => {
+    settings = setAppAliases(settings, settings.apps[0]?.path ?? '', ['calc']);
+    const out = await openApp('calc');
+    expect(out.decision).toBe('executado');
+    expect(confirms.at(-1)?.action).toMatch(/^Abrir o aplicativo Calculadora \(/);
+    expect(launched).toEqual([join(root, 'calc.exe')]);
+  });
+
+  it('fora da lista: a recusa mostra os apelidos', async () => {
+    settings = setAppAliases(settings, settings.apps[0]?.path ?? '', ['calc', 'contas']);
+    expect((await openApp('Chrome')).summary).toContain('(Calculadora (calc, contas))');
+  });
+
+  it('salvar apelidos: limpa espaços e repetidos, e recusa nome de outro app', () => {
+    const s = withApps(app('Navegador Opera GX'), app('Discord'));
+    const path = 'C:/Apps/Navegador Opera GX.lnk';
+    const next = setAppAliases(s, path, [' opera ', 'Ópera', '', 'navegador opera gx', 'gx']);
+    expect(next.apps[0]?.aliases).toEqual(['opera', 'gx']);
+    expect(next.apps[1]?.aliases).toEqual([]);
+    expect(() => setAppAliases(s, path, ['discord'])).toThrow('"discord" já é um nome de Discord.');
+    expect(() => setAppAliases(s, path, ['!!!'])).toThrow('precisa ter letras ou números');
+    expect(() => setAppAliases(s, 'C:/outro.exe', ['x'])).toThrow('Esse app não está na lista.');
+    expect(() =>
+      setAppAliases(
+        s,
+        path,
+        Array.from({ length: 11 }, (_, i) => `apelido ${i}`),
+      ),
+    ).toThrow('no máximo 10');
+  });
+
+  it('tools.json antigo, sem apelidos, continua valendo', () => {
+    const parsed = toolSettingsSchema.parse({ apps: [{ name: 'X', path: 'C:/x.exe' }] });
+    expect(parsed.apps[0]?.aliases).toEqual([]);
+  });
+
+  it('app lento: começou a abrir, mas a janela ainda não apareceu', async () => {
+    const r = new ToolRunner([createOpenAppTool(async () => ({ opened: true, starting: true }))], {
+      settings: () => settings,
+      confirm: async () => true,
+    });
+    const out = await r.call({ name: 'open_app', arguments: { app: 'Calculadora' } });
+    expect(out).toMatchObject({
+      decision: 'executado',
+      summary: 'Calculadora está abrindo (ainda carregando)',
+    });
+    expect(out.content).toContain('ainda está carregando');
   });
 });

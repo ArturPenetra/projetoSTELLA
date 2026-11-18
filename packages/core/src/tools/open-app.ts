@@ -19,6 +19,8 @@ export interface LaunchResult {
   detail?: string;
   /** O app já estava aberto: a janela dele foi trazida para a frente. */
   alreadyOpen?: boolean;
+  /** O app começou a rodar, mas a janela ainda não apareceu (apps lentos para abrir). */
+  starting?: boolean;
 }
 
 /**
@@ -51,10 +53,71 @@ export function normalizeAppName(name: string): string {
     .trim();
 }
 
+/** Nome e apelidos de um app. */
+export const appNames = (app: AppEntry): string[] => [app.name, ...app.aliases];
+
+/** Palavras que não ajudam a achar o app ("abre o app do Opera"). */
+const FILLER = new Set(['o', 'a', 'os', 'as', 'do', 'da', 'de', 'app', 'aplicativo', 'programa']);
+
+/**
+ * Acha o app pedido: pelo nome ou por um apelido; senão, pelas palavras, se só um app
+ * tiver todas ("opera" ou "Opera GX" acham "Navegador Opera GX"). Nunca escolhe entre
+ * dois: na dúvida, não acha. A confirmação mostra o app inteiro antes de abrir.
+ */
 export function findApp(settings: ToolSettings, requested: string): AppEntry | undefined {
   const wanted = normalizeAppName(requested);
-  return settings.apps.find((a) => normalizeAppName(a.name) === wanted);
+  if (!wanted) return undefined;
+  const exact = settings.apps.find((a) => appNames(a).some((n) => normalizeAppName(n) === wanted));
+  if (exact) return exact;
+  const words = wanted.split(' ').filter((w) => !FILLER.has(w));
+  if (words.length === 0) return undefined;
+  const matches = settings.apps.filter((a) =>
+    appNames(a).some((n) => {
+      const have = new Set(normalizeAppName(n).split(' '));
+      return words.every((w) => have.has(w));
+    }),
+  );
+  return matches.length === 1 ? matches[0] : undefined;
 }
+
+/**
+ * Troca os apelidos de um app (o da lista com esse caminho). Recusa apelido repetido ou
+ * que já é o nome de outro app: cada nome leva a um app só.
+ */
+export function setAppAliases(
+  settings: ToolSettings,
+  path: string,
+  aliases: readonly string[],
+): ToolSettings {
+  const app = settings.apps.find((a) => a.path === path);
+  if (!app) throw new Error('Esse app não está na lista.');
+  const clean: string[] = [];
+  for (const raw of aliases) {
+    const alias = raw.trim();
+    if (!alias) continue;
+    if (alias.length > 60)
+      throw new Error(`"${alias.slice(0, 20)}…" é longo demais (até 60 letras).`);
+    const key = normalizeAppName(alias);
+    if (!key) throw new Error(`"${alias}" precisa ter letras ou números.`);
+    if (normalizeAppName(app.name) === key || clean.some((c) => normalizeAppName(c) === key)) {
+      continue;
+    }
+    const other = settings.apps.find(
+      (a) => a !== app && appNames(a).some((n) => normalizeAppName(n) === key),
+    );
+    if (other) throw new Error(`"${alias}" já é um nome de ${other.name}.`);
+    clean.push(alias);
+  }
+  if (clean.length > 10) throw new Error('Use no máximo 10 apelidos por app.');
+  return {
+    ...settings,
+    apps: settings.apps.map((a) => (a === app ? { ...a, aliases: clean } : a)),
+  };
+}
+
+/** "Navegador Opera GX (opera)" ou só "Bloco de Notas". */
+const listName = (app: AppEntry) =>
+  app.aliases.length ? `${app.name} (${app.aliases.join(', ')})` : app.name;
 
 export interface OpenAppOptions {
   launch?: Launcher;
@@ -84,7 +147,7 @@ export function createOpenAppTool(options: OpenAppOptions | Launcher = {}): Tool
     risk: 'action',
     schema: argsSchema,
     describe: (settings) =>
-      `Abre um aplicativo do computador do usuário. Só estes podem ser abertos: ${settings.apps.map((a) => a.name).join(', ') || 'nenhum ainda'}.`,
+      `Abre um aplicativo do computador do usuário. Só estes podem ser abertos: ${settings.apps.map(listName).join(', ') || 'nenhum ainda'}.`,
     explain: (args, settings) => {
       const app = findApp(settings, args.app);
       return app
@@ -94,7 +157,7 @@ export function createOpenAppTool(options: OpenAppOptions | Launcher = {}): Tool
     async check(args, settings) {
       const app = findApp(settings, args.app);
       if (!app) {
-        const names = settings.apps.map((a) => a.name).join(', ') || 'nenhum';
+        const names = settings.apps.map(listName).join(', ') || 'nenhum';
         throw new ToolRefusal(
           `"${args.app}" não está na lista de apps permitidos (${names}); você pode adicioná-lo no botão Ferramentas`,
         );
@@ -124,6 +187,12 @@ export function createOpenAppTool(options: OpenAppOptions | Launcher = {}): Tool
         return {
           content: `Resultado: feito. ${app.name} já estava aberto; trouxe a janela para a frente.`,
           summary: `${app.name} já estava aberto; trouxe para a frente`,
+        };
+      }
+      if (result.starting) {
+        return {
+          content: `Resultado: feito. ${app.name} começou a abrir e ainda está carregando; a janela deve aparecer em instantes.`,
+          summary: `${app.name} está abrindo (ainda carregando)`,
         };
       }
       return { content: `Resultado: feito. Abri ${app.name}.`, summary: `Abri ${app.name}` };
