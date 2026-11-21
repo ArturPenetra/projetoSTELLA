@@ -1,13 +1,11 @@
-import { SentenceSplitter, speakable } from '@stella/core';
+import { createNameFixer, SentenceSplitter, speakable, STELLA_NAME } from '@stella/core';
 import type { ChatEvent } from '../shared/ipc.js';
 import type { PlayRequest, VoiceState, VoiceStatus } from '../shared/voice.js';
 
 export type { VoiceState, VoiceStatus };
 
-/** O reconhecimento sempre ouve "Stella" como "Estela" (docs/voz-modelos.md). */
-export function fixNames(text: string): string {
-  return text.replace(/(?<!\p{L})Estela(?!\p{L})/giu, 'Stella');
-}
+/** Sem a lista das personas, corrige só o nome do app ("Estela" → "Stella"). */
+const fixStellaOnly = createNameFixer([STELLA_NAME]);
 
 /** Voz de uma persona: quem fala e em que velocidade. */
 export interface VoiceChoice {
@@ -56,6 +54,11 @@ export interface VoiceControllerOptions {
   onState: (state: VoiceState) => void;
   /** O usuário falou: mostrar no chat. */
   onHeard: (text: string) => void;
+  /**
+   * Corrige o texto ouvido antes de mandar ao chat (nomes das personas que o
+   * reconhecimento escreve errado, `createNameFixer`). Padrão: só "Estela" → "Stella".
+   */
+  fixText?: (text: string) => string;
 }
 
 /**
@@ -137,7 +140,7 @@ export class VoiceController {
 
   /** O motor reconheceu uma fala do usuário. */
   heard(text: string): void {
-    const clean = fixNames(text.trim());
+    const clean = (this.options.fixText ?? fixStellaOnly)(text.trim()).trim();
     if (!this.enabled || !clean) return;
     if (this.state.status === 'speaking' || this.options.busy()) return;
     this.options.onHeard(clean);

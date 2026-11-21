@@ -101,6 +101,8 @@ export interface RegisterVoiceOptions {
   busy: () => boolean;
   cancelChat: () => void;
   voiceFor: (speakerId: string) => VoiceChoice;
+  /** Corrige os nomes no texto ouvido. */
+  fixText?: (text: string) => string;
 }
 
 /** Liga a voz ao chat, à companheira (boca) e à janela de áudio. */
@@ -128,6 +130,7 @@ export function registerVoiceIpc(options: RegisterVoiceOptions): VoiceController
     busy: options.busy,
     cancelChat: options.cancelChat,
     voiceFor: options.voiceFor,
+    ...(options.fixText ? { fixText: options.fixText } : {}),
     onState: (state) => {
       toChat({ type: 'state', state });
       if (state.status !== 'speaking') mouth(0);

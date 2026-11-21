@@ -1,3 +1,4 @@
+import { createNameFixer, nameEntries } from '@stella/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatEvent } from '../shared/ipc.js';
 import type { PlayRequest } from '../shared/voice.js';
@@ -140,10 +141,45 @@ describe('VoiceController', () => {
     expect(voice.current.status).toBe('thinking');
   });
 
-  it('"Estela" ouvido vira Stella', async () => {
+  it('sem fixText, "Estela" ouvido vira Stella', async () => {
     await voice.turnOn();
     voice.heard('Oi, Estela, tudo bem?');
     expect(sent).toEqual(['Oi, Stella, tudo bem?']);
+  });
+
+  it('fixText corrige o texto ouvido antes de ir ao chat e à tela', async () => {
+    const fixed = new VoiceController({
+      engine: () => engine,
+      audio: () => audio,
+      send: (t) => sent.push(t),
+      busy: () => false,
+      cancelChat: () => cancels++,
+      voiceFor: () => ({ sid: 43, speed: 1 }),
+      onState: () => {},
+      onHeard: (t) => heard.push(t),
+      fixText: createNameFixer(nameEntries([{ name: 'Pixi', heardAs: ['Pixie'] }])),
+    });
+    await fixed.turnOn();
+    fixed.heard(' Oi, Pixie! Cadê a Estela? ');
+    expect(sent).toEqual(['Oi, Pixi! Cadê a Stella?']);
+    expect(heard).toEqual(['Oi, Pixi! Cadê a Stella?']);
+  });
+
+  it('fala que vira vazia depois da correção é ignorada', async () => {
+    const fixed = new VoiceController({
+      engine: () => engine,
+      audio: () => audio,
+      send: (t) => sent.push(t),
+      busy: () => false,
+      cancelChat: () => cancels++,
+      voiceFor: () => ({ sid: 43, speed: 1 }),
+      onState: () => {},
+      onHeard: (t) => heard.push(t),
+      fixText: () => '  ',
+    });
+    await fixed.turnOn();
+    fixed.heard('oi');
+    expect(sent).toEqual([]);
   });
 
   it('fala ouvida com o chat ocupado é ignorada', async () => {

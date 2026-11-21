@@ -4,6 +4,7 @@ import { app, BrowserWindow, dialog, session, type Tray } from 'electron';
 import {
   APP_NAME,
   AvatarDirector,
+  createNameFixer,
   createOpenAppTool,
   createReadFileTool,
   FactExtractor,
@@ -12,6 +13,7 @@ import {
   loadPersonaCatalog,
   Memory,
   MemoryStore,
+  nameEntries,
   OllamaClient,
   ToolRunner,
   type AppConfig,
@@ -30,7 +32,7 @@ import { loadPalettes, PersonaService } from './persona-service.js';
 import { registerPersonaIpc } from './persona-ipc.js';
 import { ProfileStore } from './profile.js';
 import { buildAppMenu, createTray, updateTray, type AppMenuActions } from './tray.js';
-import { espeakPath, VOICE_MODELS, voiceForPersona, voiceModelsDir } from './voice-config.js';
+import { VOICE_MODELS, voiceForPersona, voiceModelsDir } from './voice-config.js';
 import { VoiceEngineClient } from './voice-engine-client.js';
 import { registerVoiceIpc } from './voice-ipc.js';
 import { CompanionStateStore } from './window-position.js';
@@ -234,13 +236,14 @@ async function start(): Promise<void> {
       new VoiceEngineClient({
         config: VOICE_MODELS,
         modelsDir,
-        espeak: espeakPath(modelsDir),
         onText,
       }),
     send: (text) => late.chat?.send(text),
     busy: () => late.chat?.busy ?? false,
     cancelChat: () => late.chat?.cancelAll(),
     voiceFor: (id) => voiceForPersona(catalog.get(id)),
+    // Nomes que o reconhecimento escreve errado (heardAs de cada persona + Stella).
+    fixText: createNameFixer(nameEntries(catalog.all())),
   });
 
   late.chat = registerChatIpc(chat, chatLlm, director, {
