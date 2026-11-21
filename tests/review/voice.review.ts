@@ -13,7 +13,6 @@ import { join } from 'node:path';
 import {
   ChatSession,
   chunks,
-  createEspeakPhonemizer,
   createVoiceEngine,
   DEFAULT_CHAT_MODEL,
   DEFAULT_OLLAMA_URL,
@@ -30,8 +29,6 @@ import { expect, it } from 'vitest';
 
 const ROOT = join(import.meta.dirname, '../..');
 const MODELS = process.env['STELLA_VOICE_MODELS'] ?? join(ROOT, 'models', 'voz');
-const ESPEAK =
-  process.env['STELLA_ESPEAK'] ?? join(MODELS, 'espeak-ng', 'eSpeak NG', 'espeak-ng.exe');
 const CHUNK = 512;
 const CHUNK_MS = (CHUNK / VOICE_SAMPLE_RATE) * 1000;
 
@@ -59,10 +56,9 @@ it('primeira palavra em até ~3 s depois que o usuário para de falar (mediana)'
       vad: { ...VOICE_PRESETS.vad, minSilenceDuration: 0.4 },
       numThreads: Number(process.env['VOICE_THREADS'] ?? 2),
       asr: VOICE_PRESETS.asr.parakeet,
-      tts: VOICE_PRESETS.tts.kokoro,
+      tts: VOICE_PRESETS.tts.supertonic,
     },
     modelsDir: MODELS,
-    phonemizer: createEspeakPhonemizer({ exe: ESPEAK }),
   });
   const loadMs = performance.now() - loadStart;
   const { listener, synthesizer } = engine;
@@ -77,13 +73,13 @@ it('primeira palavra em até ~3 s depois que o usuário para de falar (mediana)'
     },
   });
   for await (const _ of warm.send('Oi')) void _;
-  await synthesizer.synthesize('Olá.', { sid: 42, speed: 1 });
+  await synthesizer.synthesize('Olá.', { sid: 0, speed: 1 });
 
   const rows: string[] = [];
   const totals: number[] = [];
   for (const pedido of PEDIDOS) {
-    // Fala do usuário (voz masculina pm_alex), em 16 kHz, com 1,5 s de silêncio no fim.
-    const spoken = await synthesizer.synthesize(pedido, { sid: 43, speed: 1 });
+    // Fala do usuário (voz masculina M2), em 16 kHz, com 1,5 s de silêncio no fim.
+    const spoken = await synthesizer.synthesize(pedido, { sid: 6, speed: 1 });
     if (!spoken) throw new Error('não sintetizou a fala do usuário');
     const speech = resampleLinear(spoken.samples, spoken.sampleRate, VOICE_SAMPLE_RATE);
     const audio = new Float32Array(speech.length + VOICE_SAMPLE_RATE * 1.5);
@@ -140,7 +136,7 @@ it('primeira palavra em até ~3 s depois que o usuário para de falar (mediana)'
       firstSentence = splitter.flush()[0] ?? reply;
       firstSentenceAt = performance.now();
     }
-    const audioOut = await synthesizer.synthesize(firstSentence, { sid: 43, speed: 1.1 });
+    const audioOut = await synthesizer.synthesize(firstSentence, { sid: 5, speed: 1.15 });
     const firstAudioAt = performance.now();
     expect(audioOut?.samples.length ?? 0).toBeGreaterThan(0);
 
@@ -157,7 +153,7 @@ it('primeira palavra em até ~3 s depois que o usuário para de falar (mediana)'
   const report = [
     '# Voz: latência até a primeira palavra',
     '',
-    `Modelo de chat ${DEFAULT_CHAT_MODEL}; reconhecimento Parakeet TDT 0.6b v3 int8; síntese Kokoro v1.0 fp32 + espeak-ng; VAD fecha a fala com 0,4 s de silêncio. Carregar os modelos de voz: ${(loadMs / 1000).toFixed(1)} s.`,
+    `Modelo de chat ${DEFAULT_CHAT_MODEL}; reconhecimento Parakeet TDT 0.6b v3 int8; síntese Supertonic 3 (fp32, 5 passos); VAD fecha a fala com 0,4 s de silêncio. Carregar os modelos de voz: ${(loadMs / 1000).toFixed(1)} s.`,
     '',
     'Tempos em ms, a partir do fim da fala do usuário. "Ouvir" inclui o detector perceber o silêncio (0,4 s) e o reconhecimento.',
     '',
@@ -171,6 +167,6 @@ it('primeira palavra em até ~3 s depois que o usuário para de falar (mediana)'
   mkdirSync(join(ROOT, 'test-results'), { recursive: true });
   writeFileSync(join(ROOT, 'test-results', 'voz-latencia.md'), report);
   console.log(report);
-  // Aceito em 21/11/2026: ~2,9 s no i5-4440 com o Kokoro (licença livre, vozes distintas).
+  // Aceito em 21/11/2026: ~2,9 s no i5-4440 (Kokoro); o Supertonic 3 deve ficar abaixo disso.
   expect(median(totals)).toBeLessThan(3500);
 });

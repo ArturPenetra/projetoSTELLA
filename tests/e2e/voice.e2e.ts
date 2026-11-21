@@ -7,7 +7,7 @@ import { startFakeOllama, type FakeOllama } from '@stella/core/testing';
 import { launch, openChatByAvatar, type Launched } from './helpers.js';
 
 const MODELS = process.env['STELLA_VOICE_MODELS'] ?? join(import.meta.dirname, '../../models/voz');
-const HAS_MODELS = existsSync(join(MODELS, '.kokoro-multi-lang-v1.0.ok'));
+const HAS_MODELS = existsSync(join(MODELS, '.supertonic-3-vocoder.ok'));
 
 let fake: FakeOllama | undefined;
 let stella: Launched | undefined;

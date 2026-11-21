@@ -18,11 +18,11 @@ let synthesizer: Synthesizer | undefined;
 
 async function start(msg: Extract<ToVoiceWorker, { type: 'start' }>): Promise<void> {
   try {
-    const phonemizer = createEspeakPhonemizer({ exe: msg.espeak });
+    const phonemizer = msg.espeak ? createEspeakPhonemizer({ exe: msg.espeak }) : undefined;
     const engine = await createVoiceEngine({
       config: msg.config,
       modelsDir: msg.modelsDir,
-      phonemizer,
+      ...(phonemizer ? { phonemizer } : {}),
     });
     listener = engine.listener;
     synthesizer = engine.synthesizer;

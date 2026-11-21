@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +14,7 @@ export const VOICE_MODELS_DIR =
   process.env.STELLA_VOICE_MODELS ?? fileURLToPath(new URL('../models/voz', import.meta.url));
 
 /** Só baixa de endereços conhecidos, por HTTPS. */
-const ALLOWED_HOSTS = new Set(['github.com', 'objects.githubusercontent.com']);
+const ALLOWED_HOSTS = new Set(['github.com', 'objects.githubusercontent.com', 'huggingface.co']);
 
 const mb = (bytes) => `${(bytes / 1e6).toFixed(0)} MB`;
 
@@ -51,7 +51,9 @@ async function ensure(entry, dir, updateLock) {
     console.log(`  ${entry.name}: já instalado`);
     return;
   }
+  // O arquivo pode ficar numa subpasta (ex.: supertonic-3/onnx/vocoder.onnx).
   const file = join(dir, entry.file);
+  await mkdir(dirname(file), { recursive: true });
   console.log(`Baixando ${entry.name} (${mb(entry.size ?? 0)})...`);
   const sha = await download(entry, file);
   if (entry.sha256 && entry.sha256 !== sha && !updateLock) {

@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
-import type { ResolvedVoiceModels, VadConfig } from './config.js';
+import type { ResolvedVoiceModels, TtsConfig, VadConfig } from './config.js';
 import { VoiceModelError, resolveVoiceModels } from './config.js';
+import { createSupertonicTts, type SupertonicSherpa } from './supertonic.js';
 import {
   Listener,
   Synthesizer,
@@ -253,9 +254,13 @@ export function toPhonemeCodepoints(sentences: readonly string[]): number[][] {
     .map((s) => Array.from(s, (c) => c.codePointAt(0) ?? 0));
 }
 
-export function sherpaTtsConfig(
-  models: Pick<ResolvedVoiceModels, 'tts' | 'numThreads'>,
-): SherpaOfflineTtsConfig {
+/** Vozes que usam fonemas (Kokoro, Piper); o Supertonic tem configuração própria. */
+export type PhonemeTtsConfig = Exclude<TtsConfig, { kind: 'supertonic' }>;
+
+export function sherpaTtsConfig(models: {
+  tts: PhonemeTtsConfig;
+  numThreads: number;
+}): SherpaOfflineTtsConfig {
   const { tts, numThreads } = models;
   const lexicon = tts.lexicon !== undefined ? { lexicon: tts.lexicon } : {};
   const common = { numThreads, debug: false, provider: 'cpu' };
@@ -296,13 +301,22 @@ export async function createSherpaTts(
   sherpa = loadSherpa(),
 ): Promise<TtsBackend> {
   const { tts } = models;
+  // Supertonic lê o texto direto: não usa fonetizador nem léxico.
+  if (tts.kind === 'supertonic') {
+    return createSupertonicTts(
+      { ...tts, numThreads: models.numThreads },
+      sherpa as unknown as SupertonicSherpa,
+    );
+  }
   const { phonemizer } = options;
   if (!phonemizer && tts.lexicon === undefined) {
     throw new VoiceModelError(
       `A voz ${tts.kind} precisa de um léxico ou de um fonetizador (a sherpa-onnx 2.x não traz mais o espeak-ng).`,
     );
   }
-  const native = await sherpa.OfflineTts.createAsync(sherpaTtsConfig(models));
+  const native = await sherpa.OfflineTts.createAsync(
+    sherpaTtsConfig({ tts, numThreads: models.numThreads }),
+  );
   return {
     sampleRate: native.sampleRate,
     async generate(text: string, voice: Voice): Promise<SynthesizedAudio> {

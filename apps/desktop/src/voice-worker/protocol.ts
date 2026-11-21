@@ -8,8 +8,8 @@ export interface VoiceWorkerStart {
   /** Configuração de voz (validada no processo de voz com zod). */
   config: unknown;
   modelsDir: string;
-  /** espeak-ng.exe, para os fonemas. */
-  espeak: string;
+  /** espeak-ng.exe, para os fonemas (só para vozes que usam fonemas, como o Kokoro). */
+  espeak?: string | undefined;
 }
 
 export type ToVoiceWorker =

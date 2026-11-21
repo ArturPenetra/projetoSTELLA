@@ -201,3 +201,11 @@ export {
   joinClauses,
   type EspeakOptions,
 } from './voice/espeak.js';
+export {
+  COMMON_WORDS,
+  createNameFixer,
+  foldName,
+  nameEntries,
+  STELLA_NAME,
+  type NameEntry,
+} from './voice/names.js';

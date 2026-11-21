@@ -32,22 +32,39 @@
       "sha256": "1495e91b59d7fc53ddca91f3431758ec99f8fa253fdb0e1e851be0f72b14b0f9"
     },
     {
-      "name": "kokoro-multi-lang-v1.0",
-      "purpose": "texto para fala",
-      "license": "Apache-2.0",
-      "file": "kokoro-multi-lang-v1_0.tar.bz2",
-      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2",
-      "size": 349886476,
-      "sha256": "60703707bc05ccd48d60e1eb723f38b07d6e474795a0b6a588d7220400e0f7a4"
+      "name": "supertonic-3",
+      "purpose": "texto para fala (texto, voz e duração)",
+      "license": "OpenRAIL-M (Supertone); código MIT",
+      "file": "sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2",
+      "size": 128774318,
+      "sha256": "82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427"
     },
     {
-      "name": "espeak-ng",
-      "purpose": "fonemas do português (programa à parte, GPL-3.0)",
-      "license": "GPL-3.0 (código: github.com/espeak-ng/espeak-ng)",
-      "file": "espeak-ng-1.52.0.msi",
-      "url": "https://github.com/espeak-ng/espeak-ng/releases/download/1.52.0/espeak-ng.msi",
-      "size": 12765862,
-      "sha256": "7f673c709ea5dd579d3b5ebb98688cc575328a6ab7438d2bc405b88cedaeafb9"
+      "name": "supertonic-3-vector-estimator",
+      "purpose": "texto para fala (fp32)",
+      "license": "OpenRAIL-M (Supertone)",
+      "file": "supertonic-3/onnx/vector_estimator.onnx",
+      "url": "https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx/vector_estimator.onnx",
+      "size": 256534781,
+      "sha256": "883ac868ea0275ef0e991524dc64f16b3c0376efd7c320af6b53f5b780d7c61c"
+    },
+    {
+      "name": "supertonic-3-vocoder",
+      "purpose": "texto para fala (fp32)",
+      "license": "OpenRAIL-M (Supertone)",
+      "file": "supertonic-3/onnx/vocoder.onnx",
+      "url": "https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx/vocoder.onnx",
+      "size": 101424195,
+      "sha256": "085de76dd8e8d5836d6ca66826601f615939218f90e519f70ee8a36ed2a4c4ba"
+    },
+    {
+      "name": "supertonic-3-licenca",
+      "purpose": "licença OpenRAIL-M (vai junto do modelo)",
+      "license": "OpenRAIL-M",
+      "file": "supertonic-3/LICENSE",
+      "url": "https://huggingface.co/Supertone/supertonic-3/resolve/main/LICENSE",
+      "sha256": "0d944a9110fed9a9602d60e0423a272903e7bd21ab060490774efc77c2275e9f"
     }
   ]
 }

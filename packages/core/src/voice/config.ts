@@ -73,6 +73,27 @@ export const ttsConfigSchema = z.discriminatedUnion('kind', [
     sid: z.number().int().min(0).default(0),
     speed: z.number().min(0.5).max(2).default(1),
   }),
+  z.object({
+    /**
+     * Supertonic 3 (Supertone, OpenRAIL-M): lê o texto direto, sem fonetizador, e faz
+     * pausas naturais. Escolhido em 21/11/2026 (docs/voz-tts-candidatos.md).
+     */
+    kind: z.literal('supertonic'),
+    durationPredictor: modelFile,
+    textEncoder: modelFile,
+    vectorEstimator: modelFile,
+    vocoder: modelFile,
+    ttsJson: modelFile,
+    unicodeIndexer: modelFile,
+    voiceStyle: modelFile,
+    /** Código ISO 639-1 do idioma (`pt` cobre o português do Brasil). */
+    lang: z.string().trim().min(2).max(3).default('pt'),
+    /** Passos do fluxo: menos = mais rápido e mais áspero. 5 equilibra no i5-4440. */
+    numSteps: z.number().int().min(1).max(32).default(5),
+    /** F1–F5 = 0–4, M1–M5 = 5–9. */
+    sid: z.number().int().min(0).default(0),
+    speed: z.number().min(0.5).max(2).default(1),
+  }),
 ]);
 
 export const voiceConfigSchema = z.object({
@@ -124,6 +145,15 @@ const FILE_KEYS = {
   whisper: ['encoder', 'decoder', 'tokens'],
   kokoro: ['model', 'voices', 'tokens', 'lexicon'],
   piper: ['model', 'tokens', 'lexicon'],
+  supertonic: [
+    'durationPredictor',
+    'textEncoder',
+    'vectorEstimator',
+    'vocoder',
+    'ttsJson',
+    'unicodeIndexer',
+    'voiceStyle',
+  ],
 } as const;
 
 function isFile(path: string): boolean {
@@ -196,6 +226,26 @@ export const VOICE_PRESETS = {
     },
   },
   tts: {
+    /**
+     * Supertonic 3: os três primeiros arquivos vêm do pacote da sherpa (o duration predictor
+     * e o text encoder "int8" já são fp32); o vector estimator e o vocoder em fp32, do
+     * Hugging Face (escolha do usuário pela qualidade).
+     */
+    supertonic: {
+      kind: 'supertonic',
+      durationPredictor:
+        'sherpa-onnx-supertonic-3-tts-int8-2026-05-11/duration_predictor.int8.onnx',
+      textEncoder: 'sherpa-onnx-supertonic-3-tts-int8-2026-05-11/text_encoder.int8.onnx',
+      vectorEstimator: 'supertonic-3/onnx/vector_estimator.onnx',
+      vocoder: 'supertonic-3/onnx/vocoder.onnx',
+      ttsJson: 'sherpa-onnx-supertonic-3-tts-int8-2026-05-11/tts.json',
+      unicodeIndexer: 'sherpa-onnx-supertonic-3-tts-int8-2026-05-11/unicode_indexer.bin',
+      voiceStyle: 'sherpa-onnx-supertonic-3-tts-int8-2026-05-11/voice.bin',
+      lang: 'pt',
+      numSteps: 5,
+      sid: 0,
+      speed: 1,
+    },
     kokoro: {
       kind: 'kokoro',
       // fp32: no i5-4440 (Haswell) é 3x mais rápido que o int8 (docs/voz-modelos.md).
