@@ -10,7 +10,7 @@
   "unexpectedSide": "Coleciona piadas ruins",
   "voice": {
     "engine": "kokoro",
-    "voiceId": "definir",
+    "voiceId": "pf_dora",
     "speed": 1
   },
   "greeting": "Oi. Antes de tudo: o que é prioridade hoje?",

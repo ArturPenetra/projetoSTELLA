@@ -82,7 +82,7 @@ test('as janelas não têm acesso ao Node e cada uma só vê a própria API', as
   expect(await stella.chat.evaluate(inspect)).toEqual({
     require: 'undefined',
     process: 'undefined',
-    stella: ['appName', 'chat', 'llm', 'memory', 'personas', 'tools', 'versions'],
+    stella: ['appName', 'chat', 'llm', 'memory', 'personas', 'tools', 'versions', 'voice'],
     companion: null,
   });
   expect(await stella.companion.evaluate(inspect)).toEqual({
@@ -96,6 +96,7 @@ test('as janelas não têm acesso ao Node e cada uma só vê a própria API', as
       'dragStart',
       'openChat',
       'openMenu',
+      'onMouth',
       'onPersona',
       'onState',
       'setInteractive',

@@ -788,3 +788,54 @@ button.forget:hover {
   border-radius: 8px;
   padding: 3px 8px;
 }
+
+/* Voz: botão e faixa de estado. */
+.voice-toggle[aria-pressed='true'] {
+  background: var(--deep);
+  color: #fff;
+  border-color: transparent;
+}
+.voice-toggle[data-status='loading'] {
+  opacity: 0.8;
+}
+.voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 16px 0;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+.voice-bar[hidden] {
+  display: none;
+}
+.voice-bar::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: none;
+}
+.voice-bar[data-status='listening']::before {
+  background: #4ade80;
+}
+.voice-bar[data-status='speaking']::before {
+  background: var(--glow);
+}
+.voice-bar[data-status='error'] {
+  color: var(--danger);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .voice-bar[data-status='listening']::before,
+  .voice-bar[data-status='loading']::before {
+    animation: voice-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes voice-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}

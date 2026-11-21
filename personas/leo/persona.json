@@ -10,7 +10,7 @@
   "unexpectedSide": "Admite quando não sabe algo",
   "voice": {
     "engine": "kokoro",
-    "voiceId": "definir",
+    "voiceId": "pm_alex",
     "speed": 1.1
   },
   "greeting": "E aí! Pronto pra fazer hoje valer a pena?",

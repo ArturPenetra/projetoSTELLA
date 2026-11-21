@@ -1,6 +1,7 @@
 import type { AvatarMood, AvatarSnapshot } from '@stella/core';
 import avatarSvg from '../../../../assets/avatar/zodi-avatar.svg?raw';
 import type { CompanionApi } from '../shared/ipc.js';
+import { MouthTracker } from './mouth.js';
 
 declare global {
   interface Window {
@@ -49,8 +50,17 @@ window.companion.onPersona((persona) => {
 
 /** Enquanto fala sem áudio, a boca abre e fecha num ritmo de fala. */
 let mouthTimer: ReturnType<typeof setInterval> | undefined;
+/** O estado pede boca mexendo (humor "falando")? */
+let mouthWanted = false;
+
+/** Com a voz ligada, a boca segue o volume do áudio no lugar do ritmo fixo. */
+const mouth = new MouthTracker();
+let mouthFallback: ReturnType<typeof setTimeout> | undefined;
 
 function setMouthMoving(moving: boolean): void {
+  mouthWanted = moving;
+  // O áudio manda na boca enquanto chegam volumes; o ritmo fixo volta quando eles param.
+  if (mouth.isActive(performance.now())) return;
   if (moving && !mouthTimer) {
     mouthTimer = setInterval(() => svg?.classList.toggle('falando'), 140);
   } else if (!moving && mouthTimer) {
@@ -81,6 +91,29 @@ function render(state: AvatarSnapshot): void {
 }
 
 api.onState(render);
+
+/** Sem volume novo por um tempo: volta ao comportamento do estado (ritmo fixo ou fechada). */
+function checkMouthFallback(): void {
+  mouthFallback = undefined;
+  if (mouth.isActive(performance.now())) {
+    // O timer disparou um pouco antes da hora: confere de novo logo.
+    mouthFallback = setTimeout(checkMouthFallback, 50);
+    return;
+  }
+  svg?.classList.remove('falando');
+  setMouthMoving(mouthWanted);
+}
+
+api.onMouth((level) => {
+  const open = mouth.update(level, performance.now());
+  if (mouthTimer) {
+    clearInterval(mouthTimer);
+    mouthTimer = undefined;
+  }
+  svg?.classList.toggle('falando', open);
+  clearTimeout(mouthFallback);
+  mouthFallback = setTimeout(checkMouthFallback, mouth.timeoutMs);
+});
 
 // --- Mouse: cliques atravessam fora do avatar ----------------------------------------------
 

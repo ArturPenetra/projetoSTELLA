@@ -30,6 +30,9 @@ import { loadPalettes, PersonaService } from './persona-service.js';
 import { registerPersonaIpc } from './persona-ipc.js';
 import { ProfileStore } from './profile.js';
 import { buildAppMenu, createTray, updateTray, type AppMenuActions } from './tray.js';
+import { espeakPath, VOICE_MODELS, voiceForPersona, voiceModelsDir } from './voice-config.js';
+import { VoiceEngineClient } from './voice-engine-client.js';
+import { registerVoiceIpc } from './voice-ipc.js';
 import { CompanionStateStore } from './window-position.js';
 import { companionPosition, createChatWindow, createCompanionWindow, showChat } from './windows.js';
 
@@ -221,10 +224,30 @@ async function start(): Promise<void> {
     },
   );
 
+  // Voz: desligada a cada abertura. Ligar cria a janela de áudio e o processo de voz;
+  // desligar fecha os dois (a memória dos modelos volta ao sistema).
+  const modelsDir = voiceModelsDir(ROOT);
+  const voice = registerVoiceIpc({
+    chat,
+    companion,
+    engine: (onText) =>
+      new VoiceEngineClient({
+        config: VOICE_MODELS,
+        modelsDir,
+        espeak: espeakPath(modelsDir),
+        onText,
+      }),
+    send: (text) => late.chat?.send(text),
+    busy: () => late.chat?.busy ?? false,
+    cancelChat: () => late.chat?.cancelAll(),
+    voiceFor: (id) => voiceForPersona(catalog.get(id)),
+  });
+
   late.chat = registerChatIpc(chat, chatLlm, director, {
     memory,
     speaker: service.speaker(),
     tools,
+    onEvent: (event) => voice.chatEvent(event),
   });
   registerToolsIpc(chat, toolStore, toolLog, broker, forbiddenDirs);
   registerMemoryIpc(chat, memory, reason);
@@ -267,6 +290,7 @@ async function start(): Promise<void> {
   app.on('before-quit', (event) => {
     quitting = true;
     broker.denyAll();
+    voice.turnOff();
     director.dispose();
     tray?.destroy();
     if (memoryClosed || !memory) return;

@@ -10,7 +10,7 @@ const devUrl = !app.isPackaged ? process.env['ELECTRON_RENDERER_URL'] : undefine
 /** Tamanho da janela da companheira: balão em cima, avatar embaixo. */
 export const COMPANION_SIZE = { width: 300, height: 460 } as const;
 
-function secureWebPreferences(preload: string): Electron.WebPreferences {
+export function secureWebPreferences(preload: string): Electron.WebPreferences {
   return {
     preload: join(here, `../preload/${preload}.cjs`),
     contextIsolation: true,
@@ -20,7 +20,7 @@ function secureWebPreferences(preload: string): Electron.WebPreferences {
   };
 }
 
-function load(win: BrowserWindow, page: 'index' | 'companion'): void {
+export function load(win: BrowserWindow, page: 'index' | 'companion' | 'voice'): void {
   // O renderer nunca navega para fora do app nem abre janelas novas.
   win.webContents.on('will-navigate', (event, url) => {
     if (url !== win.webContents.getURL()) event.preventDefault();

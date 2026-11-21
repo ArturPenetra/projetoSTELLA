@@ -6,6 +6,7 @@ import type {
   Preference,
   SignId,
 } from '@stella/core';
+import type { VoiceChatEvent, VoiceState } from './voice.js';
 
 /** Nomes dos canais IPC. O renderer só fala com o processo principal por eles. */
 export const IPC = {
@@ -230,6 +231,16 @@ export interface StellaApi {
     onConfirmDismiss(listener: (id: string) => void): () => void;
     reply(id: string, allow: boolean): Promise<void>;
   };
+  /** Conversa falada. Começa desligada a cada abertura do app. */
+  voice: {
+    state(): Promise<VoiceState>;
+    /** Liga (carrega os modelos e abre o microfone) ou desliga (libera tudo). */
+    setEnabled(enabled: boolean): Promise<VoiceState>;
+    /** Esc: cala a persona e volta a ouvir. */
+    interrupt(): Promise<void>;
+    /** Estado novo da voz ou fala ouvida (para mostrar no chat). */
+    onEvent(listener: (event: VoiceChatEvent) => void): () => void;
+  };
 }
 
 /** API da janela da companheira (avatar). Não tem acesso ao chat nem ao Ollama. */
@@ -248,4 +259,6 @@ export interface CompanionApi {
   /** Clique no balão: próxima página da fala ou, na última, abre o chat. */
   bubbleClick(): void;
   openMenu(): void;
+  /** Volume da fala (0 a 1) enquanto a voz toca; a boca segue o áudio. */
+  onMouth(listener: (level: number) => void): () => void;
 }

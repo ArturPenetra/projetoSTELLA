@@ -27,11 +27,15 @@ export function registerChatIpc(
   win: BrowserWindow,
   llm: LlmClient,
   director: AvatarDirector,
-  options: ChatControllerOptions = {},
+  options: ChatControllerOptions & {
+    /** Também recebe cada evento (a voz fala a resposta enquanto ela chega). */
+    onEvent?: (event: ChatEvent) => void;
+  } = {},
 ): ChatController {
   const emit = (event: ChatEvent) => {
     if (!win.isDestroyed()) win.webContents.send(IPC.chatEvent, event);
     feedAvatar(director, event);
+    options.onEvent?.(event);
   };
   const chat = new ChatController(llm, emit, options);
 

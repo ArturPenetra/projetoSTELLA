@@ -8,7 +8,13 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: ['@stella/core'] })],
     build: {
-      rollupOptions: { input: { index: resolve(here, 'src/main/index.ts') } },
+      rollupOptions: {
+        input: {
+          index: resolve(here, 'src/main/index.ts'),
+          // Processo de voz (utilityProcess): carrega os modelos e morre ao desligar a voz.
+          'voice-worker': resolve(here, 'src/voice-worker/index.ts'),
+        },
+      },
     },
   },
   preload: {
@@ -20,6 +26,7 @@ export default defineConfig({
         input: {
           chat: resolve(here, 'src/preload/chat.ts'),
           companion: resolve(here, 'src/preload/companion.ts'),
+          voice: resolve(here, 'src/preload/voice.ts'),
         },
         output: { format: 'cjs', entryFileNames: '[name].cjs' },
       },
@@ -32,6 +39,7 @@ export default defineConfig({
         input: {
           index: resolve(here, 'src/renderer/index.html'),
           companion: resolve(here, 'src/renderer/companion.html'),
+          voice: resolve(here, 'src/renderer/voice.html'),
         },
       },
     },

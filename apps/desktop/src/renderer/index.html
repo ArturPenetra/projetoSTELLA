@@ -43,6 +43,16 @@
         >
           Ferramentas
         </button>
+        <button
+          id="voice-toggle"
+          class="ghost voice-toggle"
+          type="button"
+          title="Conversar por voz (liga o microfone)"
+          aria-pressed="false"
+          data-status="off"
+        >
+          Voz
+        </button>
         <button id="reset" class="ghost" type="button" title="Começar uma conversa nova">
           Nova
         </button>
@@ -52,6 +62,10 @@
     <div id="acting" class="acting" role="status" hidden>
       <span id="acting-text"></span>
       <span class="acting-hint">Esc cancela</span>
+    </div>
+
+    <div id="voice-bar" class="voice-bar" role="status" hidden>
+      <span id="voice-text"></span>
     </div>
 
     <div id="banner" class="banner" role="status" hidden>

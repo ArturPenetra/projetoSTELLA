@@ -10,7 +10,7 @@
   "unexpectedSide": "Sentimental com filmes antigos",
   "voice": {
     "engine": "kokoro",
-    "voiceId": "definir",
+    "voiceId": "if_sara",
     "speed": 1
   },
   "greeting": "Oi! Tive uma ideia meio maluca agora. Quer ouvir, ou prefere me contar a sua?",

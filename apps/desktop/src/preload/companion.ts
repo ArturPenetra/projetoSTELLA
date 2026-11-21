@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { AvatarSnapshot } from '@stella/core';
 import { IPC, type CompanionApi, type SpeakerView } from '../shared/ipc.js';
+import { VOICE_IPC } from '../shared/voice.js';
 
 /** API da janela do avatar: só recebe o estado e avisa cliques e arrastes. */
 const api: CompanionApi = {
@@ -23,6 +24,13 @@ const api: CompanionApi = {
   openChat: () => ipcRenderer.send(IPC.companionOpenChat),
   bubbleClick: () => ipcRenderer.send(IPC.companionBubbleClick),
   openMenu: () => ipcRenderer.send(IPC.companionMenu),
+  onMouth: (listener) => {
+    const handler = (_e: IpcRendererEvent, level: unknown) => {
+      if (typeof level === 'number' && Number.isFinite(level)) listener(level);
+    };
+    ipcRenderer.on(VOICE_IPC.mouth, handler);
+    return () => ipcRenderer.removeListener(VOICE_IPC.mouth, handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('companion', api);

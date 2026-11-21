@@ -3,6 +3,7 @@ import type { ChatEvent, SpeakerView, StellaApi } from '../shared/ipc.js';
 import { cleanIpcError, setupMemoryPanel } from './memory-panel.js';
 import { setupPersonas } from './personas-ui.js';
 import { setupTools, TOOL_ACTIVITY } from './tools-ui.js';
+import { setupVoice } from './voice-ui.js';
 
 declare global {
   interface Window {
@@ -230,8 +231,18 @@ void setupPersonas(stella);
 // Esc: recusa a confirmação aberta e cancela a resposta (e a ação) em andamento.
 setupTools(stella, () => {
   if (currentRequest) void stella.chat.cancel(currentRequest);
+  void stella.voice.interrupt();
 });
 
 void refreshStatus();
 setInterval(() => void refreshStatus(), 10_000);
 input.focus();
+
+// Voz: o que o usuário falou aparece como mensagem dele.
+setupVoice(stella, {
+  button: $<HTMLButtonElement>('voice-toggle'),
+  bar: $<HTMLElement>('voice-bar'),
+  text: $<HTMLElement>('voice-text'),
+  persona: () => $<HTMLElement>('persona-name').textContent ?? 'Stella',
+  onHeard: (text) => addBubble('user', text),
+});

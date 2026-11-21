@@ -7,6 +7,7 @@ import {
   type PersonaView,
   type StellaApi,
 } from '../shared/ipc.js';
+import { VOICE_CHAT_IPC, type VoiceChatEvent } from '../shared/voice.js';
 
 /** API mínima exposta ao renderer. Tudo passa pelo processo principal. */
 const api: StellaApi = {
@@ -75,6 +76,16 @@ const api: StellaApi = {
       return () => ipcRenderer.removeListener(IPC.toolsConfirmDismiss, handler);
     },
     reply: (id, allow) => ipcRenderer.invoke(IPC.toolsConfirmReply, id, allow),
+  },
+  voice: {
+    state: () => ipcRenderer.invoke(VOICE_CHAT_IPC.state),
+    setEnabled: (enabled) => ipcRenderer.invoke(VOICE_CHAT_IPC.setEnabled, enabled),
+    interrupt: () => ipcRenderer.invoke(VOICE_CHAT_IPC.interrupt),
+    onEvent: (listener) => {
+      const handler = (_e: IpcRendererEvent, event: VoiceChatEvent) => listener(event);
+      ipcRenderer.on(VOICE_CHAT_IPC.event, handler);
+      return () => ipcRenderer.removeListener(VOICE_CHAT_IPC.event, handler);
+    },
   },
 };
 
