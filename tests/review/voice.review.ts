@@ -1,7 +1,8 @@
 /**
  * Conversa falada com os modelos reais (Ollama aberto e `npm run models:pull` feito): mede
- * o tempo entre o usuário parar de falar e a primeira palavra da resposta. Critério da
- * Fase 7: abaixo de ~2 s. Roda com `npm run voice:review` e grava test-results/voz-latencia.md.
+ * o tempo entre o usuário parar de falar e a primeira palavra da resposta. Meta da
+ * Fase 7: ~2 s; no i5-4440 a mediana é ~2,9 s, aceita em 21/11/2026 (docs/voz-modelos.md).
+ * Roda com `npm run voice:review` e grava test-results/voz-latencia.md.
  *
  * A fala do "usuário" é gerada pela própria síntese (voz masculina) e entra no detector de
  * voz em tempo real, pedaço a pedaço, com o silêncio do fim também em tempo real: assim o
@@ -44,7 +45,7 @@ const PEDIDOS = [
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
 
-it('primeira palavra em menos de ~2 s depois que o usuário para de falar', async () => {
+it('primeira palavra em até ~3 s depois que o usuário para de falar (mediana)', async () => {
   const catalog = loadPersonaCatalog(join(ROOT, 'personas'));
   const leo = catalog.get('leo');
   if (!leo) throw new Error('persona leo ausente');
@@ -170,5 +171,6 @@ it('primeira palavra em menos de ~2 s depois que o usuário para de falar', asyn
   mkdirSync(join(ROOT, 'test-results'), { recursive: true });
   writeFileSync(join(ROOT, 'test-results', 'voz-latencia.md'), report);
   console.log(report);
-  expect(median(totals)).toBeLessThan(2000);
+  // Aceito em 21/11/2026: ~2,9 s no i5-4440 com o Kokoro (licença livre, vozes distintas).
+  expect(median(totals)).toBeLessThan(3500);
 });

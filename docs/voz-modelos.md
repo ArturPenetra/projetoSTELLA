@@ -28,7 +28,7 @@ Ficou o Kokoro fp32: licença Apache-2.0 (as vozes Piper pt_BR são CC BY-NC-SA,
 | Aqua    | `if_sara` (35) | 1,0        |
 | Pixi    | `ef_dora` (28) | 0,9        |
 
-Latência medida com `npm run voice:review` (do fim da fala do usuário até o áudio da primeira frase pronto, com o qwen3.5:2b): **2,3 a 3,4 s, mediana ~2,9 s**. Ouvir ~1 s (0,4 s de silêncio + reconhecimento), pensar ~0,6 s, falar 0,7 a 1,5 s. Para a primeira palavra sair antes, o primeiro pedaço da resposta para na primeira vírgula ou é cortado numa palavra depois de ~36 letras.
+Latência medida com `npm run voice:review` (do fim da fala do usuário até o áudio da primeira frase pronto, com o qwen3.5:2b): **2,3 a 3,4 s, mediana ~2,9 s**. Ouvir ~1 s (0,4 s de silêncio + reconhecimento), pensar ~0,6 s, falar 0,7 a 1,5 s. Para a primeira palavra sair antes, o primeiro pedaço da resposta para na primeira vírgula ou é cortado numa palavra depois de ~36 letras. **Aceito em 21/11/2026** no lugar da meta de ~2 s: a alternativa mais rápida (Piper, ~2,2 s) tem licença não comercial e uma só voz feminina rápida.
 
 RAM do app (soma dos processos): 425 MB sem voz, 1,8 GB com a voz ligada, 534 MB depois de desligar (o processo de voz é encerrado).
 

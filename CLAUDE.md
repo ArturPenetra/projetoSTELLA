@@ -42,7 +42,7 @@ Companheira de IA para desktop (Windows) que roda **100% local**: avatar animado
 - Os modelos rodam num `utilityProcess` (`voice-worker`) encerrado ao desligar a voz: os objetos da sherpa não têm `free()`, e encerrar o processo devolve toda a RAM. A janela de áudio (`voice.html`, oculta; só ela pode usar o microfone, e só áudio) também só existe com a voz ligada. Três janelas, então: companheira, chat e áudio.
 - `VoiceController` (sem Electron): meio-duplex (microfone surdo enquanto a persona fala), fala também as respostas a texto digitado, Esc cala e volta a ouvir. O Parakeet ouve "Stella" como "Estela": `fixNames` corrige.
 - Voz de cada persona em `persona.json` (`voice.voiceId` = voz do Kokoro; ids em `KOKORO_VOICES`, `voice-config.ts`). Vozes de outras línguas falam com os fonemas do português (o reconhecimento entendeu todas).
-- Latência até a primeira palavra no i5-4440: ~2,3 a 3,4 s (`npm run voice:review`). O primeiro pedaço da resposta para na primeira vírgula ou é cortado numa palavra depois de ~36 letras, para a voz começar antes.
+- Latência até a primeira palavra no i5-4440: ~2,3 a 3,4 s (`npm run voice:review`), aceito em 21/11/2026 no lugar da meta de ~2 s (Piper seria ~2,2 s, mas tem licença não comercial). O primeiro pedaço da resposta para na primeira vírgula ou é cortado numa palavra depois de ~36 letras, para a voz começar antes.
 - Preloads rodam em sandbox e não podem dar `require` em arquivos vizinhos: o build usa `isolatedEntries` para cada preload sair num arquivo só.
 - Testes obrigatórios para toda lógica nova. Arquivos de teste ficam ao lado do código: `*.test.ts`.
 - Textos de interface e mensagens de commit em **pt-BR**.
