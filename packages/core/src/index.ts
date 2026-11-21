@@ -150,3 +150,54 @@ export {
   type LaunchResult,
   type OpenAppOptions,
 } from './tools/open-app.js';
+
+// Voz
+export { SentenceSplitter, speakable, type SentenceSplitterOptions } from './voice/sentences.js';
+export { chunks, durationOf, parseWav, resampleLinear, type AudioClip } from './voice/audio.js';
+export {
+  asrConfigSchema,
+  parseVoiceConfig,
+  resolveVoiceModels,
+  ttsConfigSchema,
+  vadConfigSchema,
+  voiceConfigSchema,
+  VOICE_PRESETS,
+  VoiceModelError,
+  type AsrConfig,
+  type ResolvedVoiceModels,
+  type TtsConfig,
+  type VadConfig,
+  type VoiceConfig,
+  type VoiceConfigInput,
+} from './voice/config.js';
+export {
+  cleanTranscript,
+  Listener,
+  Synthesizer,
+  type ListenerEvents,
+  type ListenerOptions,
+  type RecognizerBackend,
+  type SynthesizedAudio,
+  type TtsBackend,
+  type VadBackend,
+  type Voice,
+} from './voice/engine.js';
+export {
+  createSherpaRecognizer,
+  createSherpaTts,
+  createSherpaVad,
+  createVoiceEngine,
+  loadSherpa,
+  toPhonemeCodepoints,
+  VOICE_SAMPLE_RATE,
+  type Phonemizer,
+  type SherpaTtsOptions,
+  type VoiceEngine,
+  type VoiceEngineOptions,
+} from './voice/sherpa.js';
+export {
+  clausePunctuation,
+  createEspeakPhonemizer,
+  joinClauses,
+  type EspeakOptions,
+} from './voice/espeak.js';
