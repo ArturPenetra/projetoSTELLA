@@ -4,7 +4,7 @@
 
 A Stella é uma companheira de IA para desktop que roda **100% no seu computador**. Ela aparece como um avatar animado na tela, conversa por texto e voz e lembra do que você contou. São 12 personas inspiradas nos signos do Zodíaco, e 4 delas estão ativas no lançamento: Leo, Corni, Aqua e Pixi. Nada sai da sua máquina: sem nuvem, sem chave de API, sem telemetria.
 
-> Em desenvolvimento. Fase atual: **6 — Ferramentas com permissão** (concluída).
+> Em desenvolvimento. Fase atual: **7 — Voz** (concluída).
 
 ## Requisitos
 
@@ -19,7 +19,7 @@ A Stella é uma companheira de IA para desktop que roda **100% no seu computador
 npm install
 ```
 
-Baixe os modelos (uma vez só, cerca de 4 GB; o Ollama precisa estar aberto):
+Baixe os modelos (uma vez só, cerca de 5 GB; o Ollama precisa estar aberto). Os modelos de voz e o espeak-ng vão para `models/voz`, com o SHA-256 de cada arquivo conferido:
 
 ```bash
 npm run models:pull
@@ -49,6 +49,17 @@ npm run dev
   - Dê **outros nomes** a cada app no campo "Outros nomes" (por exemplo, "opera" para "Navegador Opera GX"). Parte do nome também serve ("Opera GX"), desde que só um app combine.
   - Arquivos fora das pastas escolhidas e os arquivos do próprio app nunca são lidos. O que está escrito dentro de um arquivo nunca dispara uma ação.
   - Cada pedido (feito, recusado ou bloqueado) fica registrado em "Últimas ações" e no arquivo `acoes.jsonl`.
+- **Voz** (botão no chat): converse falando. Começa desligada toda vez que o app abre; ligar carrega os modelos (alguns segundos) e abre o microfone, desligar libera tudo (cerca de 1,3 GB de RAM).
+  - Fale normalmente; quando você para, ela entende e responde em voz, frase a frase, enquanto ainda escreve. A boca do avatar acompanha o volume da fala.
+  - Enquanto ela fala, o microfone fica surdo (para ela não se ouvir pelas caixas de som). **Esc** interrompe e ela volta a ouvir.
+  - Cada persona tem a própria voz. Reconhecimento, síntese e o áudio do microfone nunca saem do computador.
+
+## Créditos dos modelos de voz
+
+- Reconhecimento: [Parakeet TDT 0.6B v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), da NVIDIA, licença CC-BY-4.0, convertido pelo projeto [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache-2.0).
+- Síntese: [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) v1.0, licença Apache-2.0.
+- Detecção de fala: [Silero VAD](https://github.com/snakers4/silero-vad), licença MIT.
+- Fonemas: [eSpeak NG](https://github.com/espeak-ng/espeak-ng) 1.52, licença GPL-3.0, usado como programa à parte (o código-fonte está no link).
 
 ## Estrutura
 
