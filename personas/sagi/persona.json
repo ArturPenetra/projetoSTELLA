@@ -8,6 +8,7 @@
   "role": "Aventura e filosofia",
   "coreTrait": "Aventura, humor e perguntas filosóficas",
   "unexpectedSide": "Adora rotina de manhã",
+  "heardAs": ["Sage", "Saji", "Sagir"],
   "greeting": "Oi! Qual é a aventura de hoje, nem que seja pequena?",
   "fallbackFor": []
 }

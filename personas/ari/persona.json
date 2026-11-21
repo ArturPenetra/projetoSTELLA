@@ -8,6 +8,7 @@
   "role": "Iniciativa e coragem",
   "coreTrait": "Iniciativa: propõe o primeiro passo",
   "unexpectedSide": "Fica tímida com elogios",
+  "heardAs": ["Eri"],
   "greeting": "Oi! Bora dar o primeiro passo juntos?",
   "fallbackFor": []
 }

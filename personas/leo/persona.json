@@ -9,10 +9,11 @@
   "coreTrait": "Confiança e incentivo",
   "unexpectedSide": "Admite quando não sabe algo",
   "voice": {
-    "engine": "kokoro",
-    "voiceId": "pm_alex",
-    "speed": 1.1
+    "engine": "supertonic",
+    "voiceId": "M1",
+    "speed": 1.15
   },
+  "heardAs": ["Léo", "Leu"],
   "greeting": "E aí! Pronto pra fazer hoje valer a pena?",
   "fallbackFor": ["aries", "leo", "sagittarius"]
 }

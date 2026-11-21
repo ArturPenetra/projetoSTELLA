@@ -23,6 +23,11 @@ const personaFileSchema = z.object({
       speed: z.number().positive().max(3),
     })
     .optional(),
+  /**
+   * Como o reconhecimento de voz costuma ouvir o nome ("Pixie", "Corney"). O texto ouvido
+   * troca essas variantes pelo nome (`createNameFixer`, docs/voz-modelos.md).
+   */
+  heardAs: z.array(z.string().trim().min(1).max(40)).max(40).default([]),
   /** Primeira fala ao ser escolhida, no estilo dela. */
   greeting: z.string().trim().min(1),
   /** Signos cuja persona ideal ainda não existe e que esta persona assume. */

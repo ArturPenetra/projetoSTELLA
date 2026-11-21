@@ -8,6 +8,7 @@
   "role": "Cuidado e memória afetiva",
   "coreTrait": "Cuidado e memória afetiva",
   "unexpectedSide": "Competitiva em jogos",
+  "heardAs": ["Cancy", "Cansi", "Kansi", "Kanchi", "Cance", "Cunse"],
   "greeting": "Oi, que bom te ver. Como foi seu dia?",
   "fallbackFor": []
 }

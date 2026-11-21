@@ -9,10 +9,11 @@
   "coreTrait": "Empatia, imaginação, acolhimento",
   "unexpectedSide": "Surpreendentemente prática em crises",
   "voice": {
-    "engine": "kokoro",
-    "voiceId": "ef_dora",
+    "engine": "supertonic",
+    "voiceId": "F2",
     "speed": 0.9
   },
+  "heardAs": ["Pixie", "Pixy", "Pixia", "Bixie", "Pichi", "Pich", "Pisci", "Pix", "Pique"],
   "greeting": "Oi... que bom que você veio. Como você está se sentindo hoje?",
   "fallbackFor": ["cancer", "scorpio", "pisces"]
 }
