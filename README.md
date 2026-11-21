@@ -19,7 +19,7 @@ A Stella é uma companheira de IA para desktop que roda **100% no seu computador
 npm install
 ```
 
-Baixe os modelos (uma vez só, cerca de 5 GB; o Ollama precisa estar aberto). Os modelos de voz e o espeak-ng vão para `models/voz`, com o SHA-256 de cada arquivo conferido:
+Baixe os modelos (uma vez só, cerca de 5 GB; o Ollama precisa estar aberto). Os modelos de voz vão para `models/voz`, com o SHA-256 de cada arquivo conferido:
 
 ```bash
 npm run models:pull
@@ -52,14 +52,15 @@ npm run dev
 - **Voz** (botão no chat): converse falando. Começa desligada toda vez que o app abre; ligar carrega os modelos (alguns segundos) e abre o microfone, desligar libera tudo (cerca de 1,3 GB de RAM).
   - Fale normalmente; quando você para, ela entende e responde em voz, frase a frase, enquanto ainda escreve. A boca do avatar acompanha o volume da fala.
   - Enquanto ela fala, o microfone fica surdo (para ela não se ouvir pelas caixas de som). **Esc** interrompe e ela volta a ouvir.
-  - Cada persona tem a própria voz. Reconhecimento, síntese e o áudio do microfone nunca saem do computador.
+  - Cada persona tem a própria voz, e ela entende quando você chama a persona pelo nome ("Oi, Pixi", "troca pra Corni"). Reconhecimento, síntese e o áudio do microfone nunca saem do computador.
 
 ## Créditos dos modelos de voz
 
 - Reconhecimento: [Parakeet TDT 0.6B v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), da NVIDIA, licença CC-BY-4.0, convertido pelo projeto [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache-2.0).
-- Síntese: [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) v1.0, licença Apache-2.0.
+- Síntese: [Supertonic 3](https://huggingface.co/Supertone/supertonic-3), Copyright (c) 2026 Supertone Inc., licença [OpenRAIL-M](https://huggingface.co/Supertone/supertonic-3/blob/main/LICENSE) (a cópia vai em `models/voz/supertonic-3/LICENSE`); empacotado pelo sherpa-onnx.
 - Detecção de fala: [Silero VAD](https://github.com/snakers4/silero-vad), licença MIT.
-- Fonemas: [eSpeak NG](https://github.com/espeak-ng/espeak-ng) 1.52, licença GPL-3.0, usado como programa à parte (o código-fonte está no link).
+
+A voz é gerada por IA. A licença do Supertonic proíbe, entre outros usos, imitar pessoas reais, criar deepfakes, enganar ou prejudicar alguém e publicar o áudio gerado sem dizer que foi feito por máquina; ao usar a Stella, você aceita essas restrições (Anexo A da licença).
 
 ## Estrutura
 

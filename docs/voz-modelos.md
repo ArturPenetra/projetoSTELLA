@@ -32,6 +32,35 @@ Latência medida com `npm run voice:review` (do fim da fala do usuário até o �
 
 RAM do app (soma dos processos): 425 MB sem voz, 1,8 GB com a voz ligada, 534 MB depois de desligar (o processo de voz é encerrado).
 
+## Nomes das personas (21/11/2026)
+
+O Parakeet não conhece os nomes e escreve o que soa parecido. Medido com 45 frases que usam os nomes (chamando no começo e no fim, no meio, "troca para a Pixi", "obrigada, Corni"...) e 17 frases de controle com as palavras parecidas ("quero beber água", "vou pagar com pix", "a tela quebrou"), faladas por 7 vozes (Kokoro 42, 43, 44, 35, 28; Piper dii e miro), 602 áudios no total. Corni, Pixi e os nomes planejados também foram falados como um brasileiro diria ("Córni", "Píxi"), porque o espeak lê "Corni" como cor-NÍ. Tudo passou pelo `Listener` de verdade (Silero + Parakeet). Os scripts estão em `models/voz/_nomes/`.
+
+| Nome           | Greedy (antes) | Greedy + correção (no app) | O que o Parakeet escreve                            |
+| -------------- | -------------- | -------------------------- | --------------------------------------------------- |
+| Leo            | 1/56           | **53/56**                  | "Léo" (49), "Leu"                                   |
+| Corni (Córni)  | 3/56           | **51/56**                  | "Corney", "Corny", "Corne", "Cornes", "Cone"        |
+| Corni (cor-NÍ) | 22/56          | **47/56**                  | "Cornei", "Corani", "Cornis", "Ecorni" ("Ei Corni") |
+| Aqua           | 29/56          | **41/56**                  | "Equa", "Aquas", "EQA"; às vezes some (8)           |
+| Pixi (Píxi)    | 13/56          | **48/56**                  | "Pixie" (33), "Pix", "Pique"                        |
+| Pixi (pi-XÍ)   | 0/56           | **43/56**                  | "Pichi" (35)                                        |
+| Stella         | 5/35           | **32/35**                  | "Estela" (16), "Tela" no começo da frase (10)       |
+| 8 planejadas   | 24/112         | **82/112**                 | "Cancy", "Jemi", "Liby", "Corpe", "Tauris", "Vive"  |
+
+Os números de "depois" são na mesma amostra de onde saíram as listas, então são otimistas para vozes de gente. Nenhuma frase de controle mudou com a correção (0 de 119). As diferenças que sobram nos controles são erros do próprio reconhecimento ("ária" → "área").
+
+**Correção (`createNameFixer`, `packages/core/src/voice/names.ts`).** Cada persona lista em `persona.json` como o nome é ouvido (`heardAs`); o "Stella" fica no código (`STELLA_NAME`). Compara sem maiúsculas nem acentos, só palavras inteiras. Variantes que são palavras do português (`COMMON_WORDS`: "água", "tela", "pix", "leu", "cone", "vive"...) só viram nome quando chamam alguém: depois de "oi/olá/ei/obrigado/valeu/tchau/bom dia", no começo da frase seguidas de vírgula (menos "Água, por favor") ou de "me/você/abre/que..." ("Tela abre a calculadora"), ou depois de um verbo de troca com preposição ("troca pra Água", "falar com a Água"; "chama a Água" sem preposição). Maiúscula não conta: o Parakeet escreve "pagar com o Pix". Erros que ficam: menção sem chamar ("Pix é muito divertida"), "Pique o que você acha", nome engolido.
+
+**Hotwords (viés de contexto).** Funcionam com o Parakeet TDT na sherpa-onnx-node 2.0.2: `decodingMethod: 'modified_beam_search'`, `maxActivePaths: 4` e `hotwordsScore` na configuração do reconhecedor (nível de cima, ao lado de `modelConfig`), e as frases em `createStream(hotwords)`. Sem `bpe.vocab` no pacote do modelo, cada nome vai como tokens do `tokens.txt` separados por espaço e os nomes separados por `/` (`▁Le o/▁Cor ni/▁A qu a/▁P ix i/...`, divisão pelo token mais longo). O beam sozinho não muda nada nem custa tempo perceptível (mediana 0,50 s greedy, 0,46–0,57 s beam, com ruído de outros processos).
+
+| Decodificação         | Leo   | Corni   | Aqua  | Pixi    | Stella | Controles alterados                                              |
+| --------------------- | ----- | ------- | ----- | ------- | ------ | ---------------------------------------------------------------- |
+| greedy + correção     | 53/56 | 98/112  | 41/56 | 91/112  | 32/35  | 0                                                                |
+| hotwords 3 + correção | 54/56 | 103/112 | 52/56 | 99/112  | 32/35  | 3 (pix → Pixi, água → Aqua)                                      |
+| hotwords 5 + correção | 55/56 | 101/112 | 54/56 | 109/112 | 26/35  | 21 ("Água, por favor" → Aqua, "pix" → Pixi sempre, "leão" → Leo) |
+
+Os hotwords põem o nome no lugar da palavra parecida, e a correção não consegue desfazer. Por isso **ficaram desligados**: a correção sozinha não estraga nenhuma frase de controle. Com score 3 ganham ~10 acertos de Aqua e ~8 de Pixi; vale testar com vozes de gente antes de ligar.
+
 ## Avaliação inicial (agente, só com Kokoro int8)
 
 Kokoro (int8) e Whisper ficaram de fora nesta etapa porque são lentos demais nesta CPU (tabelas abaixo).
