@@ -1,5 +1,5 @@
 {
-  "$comment": "Modelos do Ollama usados pela Stella. 'digest' é o hash do manifesto conferido depois do download. Atualize com: npm run models:pull -- --update-lock",
+  "$comment": "Modelos do Ollama usados pela Stella. 'digest' é o hash do manifesto conferido depois do download. Atualize com: npm run models:pull -- --update-lock Modelos de voz (lista voice): baixados uma vez, conferidos pelo SHA-256 e extraídos em models/voz.",
   "models": [
     {
       "name": "qwen3.5:2b",
@@ -10,6 +10,44 @@
       "name": "bge-m3",
       "purpose": "embeddings",
       "digest": "7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab"
+    }
+  ],
+  "voice": [
+    {
+      "name": "silero-vad",
+      "purpose": "detectar fala (VAD)",
+      "license": "MIT",
+      "file": "silero_vad_v5.onnx",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad_v5.onnx",
+      "size": 2313101,
+      "sha256": "6b99cbfd39246b6706f98ec13c7c50c6b299181f2474fa05cbc8046acc274396"
+    },
+    {
+      "name": "parakeet-tdt-0.6b-v3",
+      "purpose": "fala para texto",
+      "license": "CC-BY-4.0 (NVIDIA; exige atribuição)",
+      "file": "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2",
+      "size": 487211443,
+      "sha256": "1495e91b59d7fc53ddca91f3431758ec99f8fa253fdb0e1e851be0f72b14b0f9"
+    },
+    {
+      "name": "kokoro-multi-lang-v1.0",
+      "purpose": "texto para fala",
+      "license": "Apache-2.0",
+      "file": "kokoro-multi-lang-v1_0.tar.bz2",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2",
+      "size": 349886476,
+      "sha256": "60703707bc05ccd48d60e1eb723f38b07d6e474795a0b6a588d7220400e0f7a4"
+    },
+    {
+      "name": "espeak-ng",
+      "purpose": "fonemas do português (programa à parte, GPL-3.0)",
+      "license": "GPL-3.0 (código: github.com/espeak-ng/espeak-ng)",
+      "file": "espeak-ng-1.52.0.msi",
+      "url": "https://github.com/espeak-ng/espeak-ng/releases/download/1.52.0/espeak-ng.msi",
+      "size": 12765862,
+      "sha256": "7f673c709ea5dd579d3b5ebb98688cc575328a6ab7438d2bc405b88cedaeafb9"
     }
   ]
 }

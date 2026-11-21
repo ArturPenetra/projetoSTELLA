@@ -26,7 +26,8 @@
     "models:pull": "node scripts/models-pull.mjs",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run check:native",
     "personas:affinity": "node scripts/personas-affinity.mjs",
-    "personas:review": "vitest run --config vitest.review.config.ts"
+    "personas:review": "vitest run --config vitest.review.config.ts tests/review/personas.review.ts tests/review/switch.review.ts",
+    "voice:review": "vitest run --config vitest.review.config.ts tests/review/voice.review.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

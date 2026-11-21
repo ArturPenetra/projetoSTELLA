@@ -7,3 +7,4 @@ ESPECIFICAÇÕES
 assets/avatar/*.svg
 test-results
 playwright-report
+models

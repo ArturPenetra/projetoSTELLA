@@ -8,3 +8,6 @@ release/
 .claude/
 test-results/
 playwright-report/
+
+# Modelos de voz baixados (npm run models:pull)
+models/

@@ -23,3 +23,13 @@ if (nearest.rowid !== 1) {
 console.log(
   `OK nativos no Electron ${process.versions.electron}: SQLite ${sqlite}, sqlite-vec ${vec}, busca vetorial funcionando.`,
 );
+
+// Voz: sherpa-onnx (reconhecimento de fala, VAD e síntese), módulo N-API com DLLs próprias.
+const sherpa = require('sherpa-onnx-node');
+const buffer = new sherpa.CircularBuffer(16000);
+buffer.push(new Float32Array([0.1, 0.2, 0.3]));
+if (buffer.size() !== 3) {
+  console.error('sherpa-onnx carregou, mas o buffer de áudio não funcionou.');
+  process.exit(1);
+}
+console.log(`OK sherpa-onnx ${sherpa.version ?? ''} no Electron ${process.versions.electron}.`);

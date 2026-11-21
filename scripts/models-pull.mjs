@@ -1,10 +1,12 @@
 // Baixa os modelos da Stella pelo Ollama local e confere o digest contra config/models.lock.json.
+// Depois baixa os modelos de voz (lista "voice" do lock), conferindo o SHA-256 de cada um.
 // Uso:
 //   npm run models:pull                    baixa os modelos do lock e confere os digests
 //   npm run models:pull -- qwen3.5:4b      baixa também um modelo extra (não entra no lock)
 //   npm run models:pull -- --update-lock   grava no lock os digests baixados
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { pullVoiceModels } from './voice-models.mjs';
 
 const LOCK_PATH = fileURLToPath(new URL('../config/models.lock.json', import.meta.url));
 const BASE_URL = (process.env.OLLAMA_URL ?? 'http://127.0.0.1:11434').replace(/\/+$/, '');
@@ -102,6 +104,8 @@ async function main() {
       console.log(`  ${entry.name}: digest confere`);
     }
   }
+
+  if (!(await pullVoiceModels(lock, { updateLock }))) mismatch = true;
 
   await writeFile(LOCK_PATH, JSON.stringify(lock, null, 2) + '\n');
   if (mismatch) {

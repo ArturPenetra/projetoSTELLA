@@ -1,4 +1,4 @@
-// Confere se os módulos nativos (better-sqlite3 + sqlite-vec) carregam no runtime do Electron.
+// Confere se os módulos nativos (better-sqlite3 + sqlite-vec + sherpa-onnx) carregam no runtime do Electron.
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';

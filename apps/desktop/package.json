@@ -15,6 +15,7 @@
   "dependencies": {
     "@stella/core": "0.1.0",
     "better-sqlite3": "13.2.0",
+    "sherpa-onnx-node": "2.0.2",
     "sqlite-vec": "0.1.9",
     "zod": "4.6.7"
   },
